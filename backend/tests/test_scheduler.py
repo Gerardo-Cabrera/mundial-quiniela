@@ -139,7 +139,7 @@ async def test_calc_waits_for_first_goal():
 
 @pytest.mark.asyncio
 async def test_calc_scores_with_first_goal_known():
-    """Con el primer goleador disponible y acertado: exacto (8) + primer gol (3) = 11."""
+    """Con el goleador acertado: exacto (8) + victoria (5) + primer goleador (3) = 16."""
     pred_id = await _seed(
         actual_first_goal_team="Argentina",
         actual_first_goal_player_id=SCORER_ID,
@@ -149,12 +149,12 @@ async def test_calc_scores_with_first_goal_known():
 
     pred = await _get_prediction(pred_id)
     assert pred.is_calculated is True
-    assert pred.points_earned == 11
+    assert pred.points_earned == 16
 
 
 @pytest.mark.asyncio
 async def test_calc_first_goal_wrong_player():
-    """Acierta el marcador pero falla el goleador: solo los 8 del exacto."""
+    """Acierta el marcador pero falla el goleador: exacto (8) + victoria (5) = 13."""
     pred_id = await _seed(
         actual_first_goal_team="Argentina",
         actual_first_goal_player_id=999,  # goleador real distinto al pronosticado
@@ -165,7 +165,7 @@ async def test_calc_first_goal_wrong_player():
 
     pred = await _get_prediction(pred_id)
     assert pred.is_calculated is True
-    assert pred.points_earned == 8
+    assert pred.points_earned == 13
 
 
 @pytest.mark.asyncio
@@ -177,7 +177,7 @@ async def test_calc_zero_zero_does_not_wait():
 
     pred = await _get_prediction(pred_id)
     assert pred.is_calculated is True
-    assert pred.points_earned == 8  # resultado exacto en fase de grupos
+    assert pred.points_earned == 14  # exacto (8) + empate (6) en fase de grupos
 
 
 @pytest.mark.asyncio
@@ -193,7 +193,7 @@ async def test_calc_grace_period_unblocks():
 
     pred = await _get_prediction(pred_id)
     assert pred.is_calculated is True
-    assert pred.points_earned == 8  # exacto, sin punto de primer gol
+    assert pred.points_earned == 13  # exacto (8) + victoria (5), sin goleador
 
 
 @pytest.mark.asyncio
@@ -202,11 +202,12 @@ async def test_sync_first_goals_self_heals(monkeypatch):
     resetea y el siguiente cálculo otorga los puntos completos."""
     pred_id = await _seed(actual_first_goal_team=None)
 
-    # Simular el estado del bug: ya calculada sin el punto de primer gol.
+    # Simular el estado del bug: ya calculada sin el punto de primer gol
+    # (exacto 8 + victoria 5 = 13).
     async with TestSessionLocal() as session:
         pred = await session.get(Prediction, pred_id)
         pred.is_calculated = True
-        pred.points_earned = 8
+        pred.points_earned = 13
         await session.commit()
 
     async def fake_fetch_events(fixture_id: int) -> list[dict]:
@@ -227,7 +228,7 @@ async def test_sync_first_goals_self_heals(monkeypatch):
 
     pred = await _get_prediction(pred_id)
     assert pred.is_calculated is True
-    assert pred.points_earned == 11  # ahora con el punto de primer gol
+    assert pred.points_earned == 16  # ahora con el punto de primer gol
 
 
 # ── SYNC FIXTURES (upsert por lotes) ─────────────────────────────────────────

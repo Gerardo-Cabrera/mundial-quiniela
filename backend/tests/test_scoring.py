@@ -49,24 +49,24 @@ class TestGroupScoring:
         return calculate_match_points(**defaults)
 
     def test_exact_score(self):
-        """Resultado exacto: 8 pts en grupos."""
+        """Resultado exacto (victoria): exacto + victoria se SUMAN."""
         r = self._calc(
             predicted_home=2, predicted_away=1,
             actual_home=2, actual_away=1,
         )
         assert r["exact"] == GROUP_POINTS["exact"]
-        assert r["outcome"] == 0
-        assert r["total"] == GROUP_POINTS["exact"]
+        assert r["outcome"] == GROUP_POINTS["win"]
+        assert r["total"] == GROUP_POINTS["exact"] + GROUP_POINTS["win"]
 
     def test_exact_draw(self):
-        """Empate exacto: 8 pts (no 6 de empate)."""
+        """Empate exacto: exacto + empate se SUMAN."""
         r = self._calc(
             predicted_home=1, predicted_away=1,
             actual_home=1, actual_away=1,
         )
         assert r["exact"] == GROUP_POINTS["exact"]
-        assert r["outcome"] == 0
-        assert r["total"] == GROUP_POINTS["exact"]
+        assert r["outcome"] == GROUP_POINTS["draw"]
+        assert r["total"] == GROUP_POINTS["exact"] + GROUP_POINTS["draw"]
 
     def test_correct_winner_wrong_score(self):
         """Acierta ganador, falla marcador: 5 pts."""
@@ -138,23 +138,24 @@ class TestGroupScoring:
         assert r["first_goal"] == 0
 
     def test_exact_plus_first_goal(self):
-        """Resultado exacto + primer goleador = max pts en grupos."""
+        """Máximo en grupos: exacto + victoria + primer goleador (todo suma)."""
         r = self._calc(
             predicted_home=2, predicted_away=1,
             predicted_first_goal_player_id=22,
             actual_home=2, actual_away=1,
             actual_first_goal_player_id=22,
         )
-        assert r["total"] == GROUP_POINTS["exact"] + GROUP_POINTS["first_goal"]
+        assert r["total"] == GROUP_POINTS["exact"] + GROUP_POINTS["win"] + GROUP_POINTS["first_goal"]
 
-    def test_exact_and_outcome_mutually_exclusive(self):
-        """Exacto y victoria/empate son mutuamente excluyentes."""
+    def test_exact_and_outcome_are_additive(self):
+        """Exacto y victoria/empate se SUMAN (no se excluyen)."""
         r = self._calc(
             predicted_home=3, predicted_away=1,
             actual_home=3, actual_away=1,
         )
         assert r["exact"] == GROUP_POINTS["exact"]
-        assert r["outcome"] == 0
+        assert r["outcome"] == GROUP_POINTS["win"]
+        assert r["total"] == GROUP_POINTS["exact"] + GROUP_POINTS["win"]
 
 
 # ── KNOCKOUT PHASE SCORING ───────────────────────────────────────────────────
@@ -179,7 +180,7 @@ class TestKnockoutScoring:
             phase=phase,
         )
         assert r["exact"] == KNOCKOUT_POINTS["exact"]
-        assert r["total"] == KNOCKOUT_POINTS["exact"]
+        assert r["total"] == KNOCKOUT_POINTS["exact"] + KNOCKOUT_POINTS["win"]
 
     def test_correct_winner_knockout(self):
         r = calculate_match_points(
@@ -210,10 +211,12 @@ class TestKnockoutScoring:
             phase=MatchPhase.SEMI_FINALS,
         )
         assert r["first_goal"] == KNOCKOUT_POINTS["first_goal"]
-        assert r["total"] == KNOCKOUT_POINTS["exact"] + KNOCKOUT_POINTS["first_goal"]
+        assert r["total"] == (
+            KNOCKOUT_POINTS["exact"] + KNOCKOUT_POINTS["win"] + KNOCKOUT_POINTS["first_goal"]
+        )
 
     def test_max_knockout_points(self):
-        """Max en final: exacto 11 + primer gol 5 = 16."""
+        """Máximo en la final: exacto 11 + victoria 8 + primer goleador 5 = 24."""
         r = calculate_match_points(
             predicted_home=2, predicted_away=1,
             predicted_first_goal_player_id=44,
@@ -221,5 +224,7 @@ class TestKnockoutScoring:
             actual_first_goal_player_id=44,
             phase=MatchPhase.FINAL,
         )
-        assert r["total"] == KNOCKOUT_POINTS["exact"] + KNOCKOUT_POINTS["first_goal"]
-        assert r["total"] == 16
+        assert r["total"] == (
+            KNOCKOUT_POINTS["exact"] + KNOCKOUT_POINTS["win"] + KNOCKOUT_POINTS["first_goal"]
+        )
+        assert r["total"] == 24

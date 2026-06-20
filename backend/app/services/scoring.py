@@ -62,22 +62,23 @@ def calculate_match_points(
     Calcula los puntos de un pronóstico de partido.
     Retorna un dict con el desglose y el total.
 
-    El primer gol se puntúa por **jugador** (primer goleador): se compara el
-    `api_player_id` pronosticado contra el del goleador real. Comparar por id evita
-    la ambigüedad de nombres.
+    Los componentes son **acumulativos**: el resultado exacto SUMA a victoria/
+    empate (no lo reemplaza), y el primer goleador suma aparte. El primer gol se
+    puntúa por **jugador**: se compara el `api_player_id` pronosticado contra el
+    del goleador real (comparar por id evita la ambigüedad de nombres).
     """
     p = _get_points_table(phase)
     breakdown = {"exact": 0, "outcome": 0, "first_goal": 0, "total": 0}
 
-    exact_score = (predicted_home == actual_home and predicted_away == actual_away)
-
-    if exact_score:
+    # Resultado exacto.
+    if predicted_home == actual_home and predicted_away == actual_away:
         breakdown["exact"] = p["exact"]
-    else:
-        pred_outcome   = _get_outcome(predicted_home, predicted_away)
-        actual_outcome = _get_outcome(actual_home, actual_away)
-        if pred_outcome == actual_outcome:
-            breakdown["outcome"] = p["draw"] if actual_outcome == "draw" else p["win"]
+
+    # Victoria/empate (acertar el resultado): se suma aparte. Al acertar el exacto
+    # también se acierta el resultado, por lo que ambos se acumulan.
+    actual_outcome = _get_outcome(actual_home, actual_away)
+    if _get_outcome(predicted_home, predicted_away) == actual_outcome:
+        breakdown["outcome"] = p["draw"] if actual_outcome == "draw" else p["win"]
 
     if (
         predicted_first_goal_player_id is not None

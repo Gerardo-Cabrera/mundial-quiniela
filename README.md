@@ -119,6 +119,11 @@ pytest
 
 ## Sistema de Puntuación
 
+> **Los puntos son acumulativos**: se suman según lo que se acierte. Si aciertas
+> el **resultado exacto**, sumas su valor **más** el de victoria/empate (acertar
+> el exacto implica acertar el resultado); y si aciertas el **primer goleador**,
+> también se suma. Ej. (grupos, 2-1 con goleador): 8 + 5 + 3 = **16**.
+>
 > El **1er gol** se acierta por **jugador** (primer goleador), no por equipo: se
 > elige un jugador de las plantillas de los dos equipos del partido y se compara
 > por id contra el goleador real.
