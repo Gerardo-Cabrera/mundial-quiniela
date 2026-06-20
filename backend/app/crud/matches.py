@@ -1,0 +1,81 @@
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.match import Match, MatchPhase, MatchStatus
+
+
+def _as_utc(dt: datetime) -> datetime:
+    """Normaliza a UTC-aware (SQLite devuelve naive; PostgreSQL, aware)."""
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+class MatchCRUD:
+    async def get_all(
+        self,
+        db: AsyncSession,
+        *,
+        phase: MatchPhase | None = None,
+        status: MatchStatus | None = None,
+    ) -> list[Match]:
+        query = select(Match).order_by(Match.match_date)
+        if phase:
+            query = query.where(Match.phase == phase)
+        if status:
+            query = query.where(Match.status == status)
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
+    async def get_by_id(self, db: AsyncSession, match_id: int) -> Match | None:
+        result = await db.execute(select(Match).where(Match.id == match_id))
+        return result.scalar_one_or_none()
+
+    async def get_day_first_kickoff(
+        self, db: AsyncSession, match_date: datetime, tz: ZoneInfo
+    ) -> datetime:
+        """Kickoff más temprano del día (en `tz`) al que pertenece `match_date`.
+
+        El día se calcula en la zona del torneo (no UTC) para que los partidos
+        nocturnos no caigan en jornadas distintas. Acota la búsqueda a una ventana
+        de ±1 día UTC (una jornada cabe de sobra) y filtra en Python → cross-DB
+        (no usa funciones de zona horaria de SQL, que SQLite no tiene)."""
+        ref = _as_utc(match_date)
+        day = ref.astimezone(tz).date()
+        result = await db.execute(
+            select(Match.match_date).where(
+                Match.match_date >= ref - timedelta(days=1),
+                Match.match_date <= ref + timedelta(days=1),
+            )
+        )
+        kickoffs = [
+            _as_utc(d) for (d,) in result.all()
+            if _as_utc(d).astimezone(tz).date() == day
+        ]
+        return min(kickoffs) if kickoffs else ref
+
+    async def upsert_many(self, db: AsyncSession, fixtures: list[dict]) -> int:
+        """
+        Inserta o actualiza partidos por api_fixture_id. Retorna cuántos se
+        procesaron. Idempotente: reejecutable sin duplicar.
+
+        Carga los partidos existentes en UNA sola query y resuelve el upsert en
+        memoria (evita el patrón N+1 de un SELECT por fixture).
+        """
+        if not fixtures:
+            return 0
+
+        result = await db.execute(select(Match))
+        existing = {m.api_fixture_id: m for m in result.scalars().all()}
+
+        for parsed in fixtures:
+            match = existing.get(parsed["api_fixture_id"])
+            if match:
+                for key, value in parsed.items():
+                    setattr(match, key, value)
+            else:
+                db.add(Match(**parsed))
+        await db.flush()
+        return len(fixtures)
+
+
+match_crud = MatchCRUD()

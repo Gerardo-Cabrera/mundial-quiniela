@@ -1,0 +1,45 @@
+# Desarrollo (Mundial Quiniela). Totalmente independiente de la app de Champions:
+# BD propia (mundial_quiniela), puertos propios (8001 backend, 5174 frontend) y
+# proyecto Docker propio (carpeta mundial-quiniela). Ambas apps pueden correr a
+# la vez sin chocar.
+#
+# La base de datos es el PostgreSQL NATIVO del host. Setup único (rol + base):
+#
+#   psql -d postgres -c "CREATE ROLE mundial LOGIN PASSWORD 'mundial_pass'"
+#   psql -d postgres -c "CREATE DATABASE mundial_quiniela OWNER mundial"
+#
+# (Para producción autocontenida en un servidor, ver docker-compose.prod.yml)
+
+services:
+  backend:
+    build: ./backend
+    restart: always
+    # Red del host: el contenedor alcanza el PostgreSQL local en localhost:5432
+    # y expone la API directamente en el puerto 8001 del host (sin "ports").
+    network_mode: host
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://mundial:mundial_pass@localhost:5432/mundial_quiniela
+    volumes:
+      - ./backend:/app
+    # Migraciones primero (idempotente): garantiza que las tablas existan.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"
+
+  frontend:
+    build:
+      context: ./frontend
+      # La salida del host va por una VPN (MTU 1280); la red de build por defecto
+      # de Docker usa MTU 1500 y los paquetes grandes (descargas de npm) se pierden
+      # → `npm install` deja node_modules a medias ("vite: not found"). Usar la red
+      # del host durante el build hereda su MTU 1280 y npm completa correctamente.
+      network: host
+    restart: always
+    ports:
+      - "5174:5174"
+    env_file:
+      - ./frontend/.env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host --port 5174

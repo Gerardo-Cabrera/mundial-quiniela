@@ -1,0 +1,66 @@
+# Despliegue de producción (Mundial Quiniela). Uso:
+#   1. Crear .env en la raíz con POSTGRES_PASSWORD=<contraseña fuerte>
+#   2. Configurar backend/.env (SECRET_KEY propio, API_FOOTBALL_KEY, etc.)
+#   3. docker compose -f docker-compose.prod.yml up -d --build
+#
+# Autocontenido: la BD es un contenedor propio (no usa el Postgres del host).
+# El frontend se publica en el puerto 81 del host para poder coexistir con la
+# app de Champions (que usa el 80) en la misma máquina.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: mundial
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: mundial_quiniela
+    volumes:
+      # Bind mount en el host: los datos sobreviven a borrar imágenes/volúmenes.
+      - ./data/postgres_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mundial -d mundial_quiniela"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://mundial:${POSTGRES_PASSWORD}@db:5432/mundial_quiniela
+      - APP_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+    # --proxy-headers: nginx reenvía la IP real del cliente (rate limiting).
+    # ⚠️ UN SOLO WORKER a propósito: el scheduler (APScheduler) vive en el
+    # proceso de la app. Con --workers N los jobs se ejecutarían N veces
+    # (N llamadas a la API de cuota limitada, carreras en el scoring). Si algún
+    # día se necesita escalar, mover los jobs a un proceso/worker dedicado antes
+    # de subir el número de workers. NO añadir --workers aquí.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000
+             --proxy-headers --forwarded-allow-ips='*'"
+    # /health sin curl (la imagen slim no lo trae): urllib de la stdlib.
+    # start_period cubre migraciones + arranque de uvicorn antes de contar fallos.
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: always
+    ports:
+      - "81:80"
+    depends_on:
+      backend:
+        condition: service_healthy

@@ -1,0 +1,7 @@
+# Evita que el COPY . . del Dockerfile pise el node_modules instalado por
+# `npm install` dentro de la imagen (corrompe los symlinks de .bin → "vite: not found").
+node_modules
+dist
+.env
+.git
+npm-debug.log*
