@@ -32,19 +32,21 @@ scheduler = AsyncIOScheduler(
     }
 )
 
-# Última vez que el sync de fixtures SÍ llamó a la API (no la última vez que cambió un
-# dato): pacea las corridas de respaldo cuando no hay partidos por terminar.
+# Última vez que el sync de fixtures sincronizó CON ÉXITO con la API (no la última vez
+# que cambió un dato): pacea las corridas de respaldo cuando no hay partidos por terminar.
+# Un fallo no lo avanza, para reintentar pronto en lugar de quedarse con datos viejos.
 _last_fixtures_fetch: datetime | None = None
 
 
-async def _retry(coro_func, job_name: str) -> None:
-    """Ejecuta una coroutine con reintentos en caso de fallo."""
+async def _retry(coro_func, job_name: str) -> bool:
+    """Ejecuta una coroutine con reintentos. Devuelve True si tuvo éxito y False si
+    agotó los reintentos (los jobs que no necesitan el resultado lo ignoran)."""
     max_retries = settings.JOB_MAX_RETRIES
     retry_delay = settings.JOB_RETRY_DELAY_SECONDS
     for attempt in range(1, max_retries + 1):
         try:
             await coro_func()
-            return
+            return True
         except (HTTPStatusError, RequestError) as e:
             logger.warning(
                 "Job %s attempt %d/%d failed (network): %s",
@@ -64,6 +66,7 @@ async def _retry(coro_func, job_name: str) -> None:
         if attempt < max_retries:
             await asyncio.sleep(retry_delay * attempt)
     logger.error("Job %s failed after %d retries.", job_name, max_retries)
+    return False
 
 
 async def _do_sync_fixtures():
@@ -94,8 +97,11 @@ async def sync_fixtures():
     if not (near_finish or idle_due):
         return
     logger.info("Starting fixture sync...")
-    await _retry(_do_sync_fixtures, "sync_fixtures")
-    _last_fixtures_fetch = now
+    if await _retry(_do_sync_fixtures, "sync_fixtures"):
+        # Solo avanza el reloj de pacing si el fetch tuvo éxito: tras un fallo de
+        # red/API, idle_due sigue activo y se reintenta en la próxima corrida en
+        # vez de esperar SYNC_FIXTURES_IDLE_MINUTES con datos viejos.
+        _last_fixtures_fetch = now
 
 
 async def _do_sync_teams():

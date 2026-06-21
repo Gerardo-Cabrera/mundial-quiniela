@@ -339,6 +339,19 @@ async def test_sync_fixtures_fetches_in_finish_window(monkeypatch):
     assert calls["n"] == 1
 
 
+@pytest.mark.asyncio
+async def test_sync_fixtures_failure_keeps_idle_clock(monkeypatch):
+    """Un fetch fallido NO avanza _last_fixtures_fetch: el respaldo idle sigue activo
+    y se reintenta en la próxima corrida en vez de quedarse con datos viejos."""
+    monkeypatch.setattr(scheduler_module.settings, "JOB_MAX_RETRIES", 1)
+    async def failing_fetch(*a, **k):
+        raise RequestError("boom")
+    monkeypatch.setattr(football_api, "fetch_fixtures", failing_fetch)
+    monkeypatch.setattr(scheduler_module, "_last_fixtures_fetch", None)  # idle_due -> consulta
+    await scheduler_module.sync_fixtures()
+    assert scheduler_module._last_fixtures_fetch is None
+
+
 def test_parse_fixture_finish_fallback_group_stage():
     """Un partido de grupos aún LIVE pasado el plazo de finalización (135 min) se da por finalizado."""
     old = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
