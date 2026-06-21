@@ -9,6 +9,7 @@ Aplicación de quiniela basada en el Mundial FIFA 2026 con sistema de puntuació
 | Frontend | React 18 + Vite + TypeScript |
 | Estilos | Tailwind CSS |
 | Estado | Zustand + React Query |
+| i18n | react-i18next (textos de la UI en `frontend/src/i18n/locales/`) |
 | Backend | FastAPI + Python 3.12 |
 | Base de Datos | PostgreSQL |
 | ORM | SQLAlchemy 2.0 (async) |

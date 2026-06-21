@@ -2,8 +2,9 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Pencil } from "lucide-react";
 import type { Match, Prediction } from "@/types";
-import { PHASE_LABELS, isFirstGoalHit } from "@/types";
+import { isFirstGoalHit } from "@/types";
 import { Badge, StatusDot, PointsChip } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
 
 interface MatchCardProps {
@@ -13,6 +14,7 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
+  const { t } = useTranslation();
   const isFinished  = match.status === "finished";
   const isScheduled = match.status === "scheduled";
   const hasExact    = prediction &&
@@ -32,7 +34,7 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
       {/* Header: fase + status */}
       <div className="flex items-center justify-between mb-4">
         <Badge variant={match.phase === "group_stage" ? "blue" : "gold"}>
-          {PHASE_LABELS[match.phase]}
+          {t(`phase.${match.phase}`)}
         </Badge>
         <StatusDot status={match.status} />
       </div>
@@ -56,7 +58,7 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
               {match.home_score} - {match.away_score}
             </span>
           ) : (
-            <span className="font-display text-xl text-ucl-silver/50">VS</span>
+            <span className="font-display text-xl text-ucl-silver/50">{t("matchCard.vs")}</span>
           )}
           <span className="text-xs text-ucl-silver/50 font-mono">
             {format(new Date(match.match_date), "d MMM · HH:mm", { locale: es })}
@@ -77,7 +79,7 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
       {/* Real first goal scorer (finished matches) */}
       {isFinished && match.first_goal_player && (
         <div className="mt-3 flex items-center justify-center gap-1.5 text-xs">
-          <span className="text-ucl-silver/50">⚽ Primer gol:</span>
+          <span className="text-ucl-silver/50">⚽ {t("matchCard.firstGoalLabel")}</span>
           <span className="font-medium text-ucl-white">{match.first_goal_player}</span>
         </div>
       )}
@@ -87,15 +89,15 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
         <div className="mt-auto pt-3 border-t border-ucl-blue/30 flex items-center justify-between">
           <div className="flex flex-col gap-1 text-sm min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-ucl-silver/60 text-xs">Tu pronóstico:</span>
+              <span className="text-ucl-silver/60 text-xs">{t("matchCard.yourPrediction")}</span>
               <span className={clsx("font-mono font-bold", hasExact ? "text-ucl-gold" : "text-ucl-white")}>
                 {prediction.predicted_home} - {prediction.predicted_away}
               </span>
-              {hasExact && <span className="text-xs text-ucl-gold">✓ Exacto</span>}
+              {hasExact && <span className="text-xs text-ucl-gold">{t("matchCard.exact")}</span>}
             </div>
             {prediction.first_goal_player && (
               <div className="flex items-center gap-1.5 text-xs min-w-0">
-                <span className="text-ucl-silver/60">⚽ Goleador:</span>
+                <span className="text-ucl-silver/60">⚽ {t("matchCard.scorerLabel")}</span>
                 <span className={clsx("truncate", goalHit ? "text-ucl-gold" : "text-ucl-silver/80")}>
                   {prediction.first_goal_player}
                 </span>
@@ -113,7 +115,7 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
               <button
                 onClick={() => onPredict(match)}
                 className="text-ucl-silver/40 hover:text-ucl-gold transition-colors p-1"
-                title="Editar pronóstico"
+                title={t("matchCard.editTooltip")}
               >
                 <Pencil size={14} />
               </button>
@@ -126,7 +128,7 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
             onClick={() => onPredict(match)}
             className="btn-primary w-full text-sm py-2"
           >
-            Pronosticar
+            {t("matchCard.predict")}
           </button>
         </div>
       ) : null}

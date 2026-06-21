@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Minus, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Match, Prediction } from "@/types";
 import { useSavePrediction, useMatchPlayers } from "@/hooks";
 import { Spinner } from "@/components/ui";
@@ -39,6 +40,7 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
   );
   const { mutate: save, isPending, isSuccess, isError } = useSavePrediction();
   const { data: players = [], isLoading: playersLoading } = useMatchPlayers(match.id);
+  const { t } = useTranslation();
 
   const homePlayers = players.filter((p) => p.team_name === match.home_team);
   const awayPlayers = players.filter((p) => p.team_name === match.away_team);
@@ -69,7 +71,7 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
         </button>
 
         <h2 className="font-display text-2xl text-ucl-gold mb-1">
-          {prediction ? "Editar Pronóstico" : "Pronóstico"}
+          {prediction ? t("predictionModal.titleEdit") : t("predictionModal.titleNew")}
         </h2>
         <p className="text-ucl-silver/60 text-sm mb-6">
           {match.home_team} vs {match.away_team}
@@ -93,15 +95,15 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
         {/* First goal scorer */}
         <div className="mb-6">
           <label className="block text-xs text-ucl-silver/70 mb-2 font-mono uppercase tracking-wider">
-            ⚽ Primer goleador (opcional)
+            ⚽ {t("predictionModal.firstScorerLabel")}
           </label>
           {playersLoading ? (
             <div className="input-base w-full flex items-center gap-2 text-ucl-silver/60">
-              <Spinner size="sm" /> Cargando plantillas...
+              <Spinner size="sm" /> {t("predictionModal.loadingSquads")}
             </div>
           ) : players.length === 0 ? (
             <p className="text-xs text-ucl-silver/50 italic">
-              Plantillas no disponibles todavía (se sincronizan desde API-Football).
+              {t("predictionModal.squadsUnavailable")}
             </p>
           ) : (
             <select
@@ -109,7 +111,7 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
               onChange={(e) => setFirstGoalPlayerId(e.target.value)}
               className="input-base w-full"
             >
-              <option value="">— Sin pronóstico —</option>
+              <option value="">{t("predictionModal.noPrediction")}</option>
               <optgroup label={match.home_team}>
                 {homePlayers.map((p) => (
                   <option key={p.api_player_id} value={p.api_player_id}>{p.name}</option>
@@ -130,14 +132,14 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
           disabled={isPending || isSuccess}
           className="btn-primary w-full flex items-center justify-center gap-2"
         >
-          {isPending ? <><Spinner size="sm" /> Guardando...</> :
-           isSuccess  ? "✓ Guardado" :
-           "Guardar Pronóstico"}
+          {isPending ? <><Spinner size="sm" /> {t("predictionModal.saving")}</> :
+           isSuccess  ? t("predictionModal.saved") :
+           t("predictionModal.save")}
         </button>
 
         {isError && (
           <p className="mt-3 text-red-400 text-sm text-center">
-            Error al guardar. Intenta de nuevo.
+            {t("predictionModal.saveError")}
           </p>
         )}
       </div>

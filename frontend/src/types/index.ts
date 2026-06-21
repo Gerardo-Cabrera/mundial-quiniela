@@ -70,24 +70,8 @@ export interface Token {
   user: User;
 }
 
-// ── PHASE LABELS ──────────────────────────────────────────────────────────────
-
-export const PHASE_LABELS: Record<MatchPhase, string> = {
-  group_stage:    "Fase de Grupos",
-  round_of_32:    "Dieciseisavos",
-  round_of_16:    "Octavos de Final",
-  quarter_finals: "Cuartos de Final",
-  semi_finals:    "Semifinales",
-  third_place:    "Tercer Puesto",
-  final:          "Final",
-};
-
-export const STATUS_LABELS: Record<MatchStatus, string> = {
-  scheduled:  "Programado",
-  live:       "En Vivo",
-  finished:   "Finalizado",
-  postponed:  "Pospuesto",
-};
+// Las etiquetas visibles de fases y estados viven en los archivos de traducción
+// (`i18n/locales/*.json`, claves `phase.*` / `status.*`), no aquí.
 
 // ── HELPERS ─────────────────────────────────────────────────────────────────
 

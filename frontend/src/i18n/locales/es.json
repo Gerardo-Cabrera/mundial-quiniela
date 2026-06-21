@@ -1,0 +1,122 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "vs": "vs",
+    "pts": "pts",
+    "realScore": "Real: {{home}} - {{away}}"
+  },
+  "brand": {
+    "name": "MUNDIAL",
+    "tagline": "QUINIELA 2026",
+    "edition": "Mundial FIFA 2026",
+    "copyright": "Mundial FIFA © 2026"
+  },
+  "auth": {
+    "tabLogin": "Entrar",
+    "tabRegister": "Registrarse",
+    "yourTeam": "Tu Equipo",
+    "selectTeamAria": "Selecciona tu equipo",
+    "selectTeamPlaceholder": "— Selecciona tu equipo —",
+    "email": "Email",
+    "emailAria": "Correo electrónico",
+    "emailPlaceholder": "tu@email.com",
+    "password": "Contraseña",
+    "submitLogin": "Entrar a la Quiniela",
+    "submitRegister": "Crear cuenta",
+    "genericError": "Ocurrió un error. Intenta de nuevo."
+  },
+  "nav": {
+    "table": "Tabla",
+    "matches": "Partidos",
+    "results": "Resultados",
+    "predictions": "Pronósticos",
+    "logout": "Salir"
+  },
+  "dashboard": {
+    "title": "Tabla General",
+    "emptyTitle": "Sin datos aún",
+    "emptyDescription": "Los puntos aparecerán cuando haya partidos finalizados.",
+    "yourPosition": "Tu posición",
+    "predictionsCount": "{{n}} pronósticos",
+    "points": "PUNTOS",
+    "ranking": "Clasificación",
+    "you": "(tú)",
+    "predictionsTooltip": "Pronósticos",
+    "predictionsMade": "Pronósticos realizados"
+  },
+  "matches": {
+    "title": "Partidos",
+    "subtitle": "Por pronosticar · Mundial FIFA 2026",
+    "emptyTitle": "Sin partidos por pronosticar",
+    "emptyDescription": "No hay jornadas abiertas para los filtros seleccionados. Mira los resultados en la sección Resultados."
+  },
+  "results": {
+    "title": "Resultados",
+    "subtitle": "Resultados reales por jornada · Mundial FIFA 2026",
+    "emptyTitle": "Sin resultados aún",
+    "emptyDescription": "Cuando se jueguen los partidos, sus resultados reales aparecerán aquí."
+  },
+  "myPredictions": {
+    "title": "Mis Pronósticos",
+    "registered": "{{n}} pronósticos registrados",
+    "matchPoints": "PTS PARTIDOS",
+    "emptyTitle": "Sin pronósticos",
+    "emptyDescription": "Ve a la sección de Partidos para registrar tus pronósticos.",
+    "noScorer": "sin goleador",
+    "realScorer": " · real: {{name}}",
+    "deleteTooltip": "Eliminar pronóstico"
+  },
+  "matchCard": {
+    "vs": "VS",
+    "firstGoalLabel": "Primer gol:",
+    "yourPrediction": "Tu pronóstico:",
+    "exact": "✓ Exacto",
+    "scorerLabel": "Goleador:",
+    "predict": "Pronosticar",
+    "editTooltip": "Editar pronóstico"
+  },
+  "predictionModal": {
+    "titleEdit": "Editar Pronóstico",
+    "titleNew": "Pronóstico",
+    "firstScorerLabel": "Primer goleador (opcional)",
+    "loadingSquads": "Cargando plantillas...",
+    "squadsUnavailable": "Plantillas no disponibles todavía (se sincronizan desde API-Football).",
+    "noPrediction": "— Sin pronóstico —",
+    "saving": "Guardando...",
+    "saved": "✓ Guardado",
+    "save": "Guardar Pronóstico",
+    "saveError": "Error al guardar. Intenta de nuevo."
+  },
+  "phase": {
+    "group_stage": "Fase de Grupos",
+    "round_of_32": "Dieciseisavos",
+    "round_of_16": "Octavos de Final",
+    "quarter_finals": "Cuartos de Final",
+    "semi_finals": "Semifinales",
+    "third_place": "Tercer Puesto",
+    "final": "Final"
+  },
+  "phaseShort": {
+    "all": "Todos",
+    "group_stage": "Grupos",
+    "round_of_32": "16avos",
+    "round_of_16": "8vos",
+    "quarter_finals": "Cuartos",
+    "semi_finals": "Semis",
+    "third_place": "3er Puesto",
+    "final": "Final"
+  },
+  "status": {
+    "scheduled": "Programado",
+    "live": "En Vivo",
+    "finished": "Finalizado",
+    "postponed": "Pospuesto",
+    "liveBadge": "EN VIVO"
+  },
+  "error": {
+    "title": "Algo salió mal",
+    "unexpected": "Error inesperado en la aplicación.",
+    "retry": "Reintentar",
+    "retryAria": "Reintentar carga de la aplicación"
+  }
+}

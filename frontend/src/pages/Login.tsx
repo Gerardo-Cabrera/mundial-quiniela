@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { useTeamsConfig } from "@/hooks";
 import { Spinner } from "@/components/ui";
@@ -16,6 +17,7 @@ export default function LoginPage() {
 
   const { login, register } = useAuthStore();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { data: teamsConfig } = useTeamsConfig();
   const playerTeams = teamsConfig?.allowed_teams ?? [];
 
@@ -33,7 +35,7 @@ export default function LoginPage() {
       }
       navigate("/");
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? "Ocurrió un error. Intenta de nuevo.");
+      setError(err?.response?.data?.detail ?? t("auth.genericError"));
     } finally {
       setLoading(false);
     }
@@ -59,8 +61,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm relative">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="font-display text-6xl text-ucl-gold tracking-widest">MUNDIAL</h1>
-          <p className="text-ucl-silver/70 font-mono text-sm mt-1">QUINIELA 2026</p>
+          <h1 className="font-display text-6xl text-ucl-gold tracking-widest">{t("brand.name")}</h1>
+          <p className="text-ucl-silver/70 font-mono text-sm mt-1">{t("brand.tagline")}</p>
           <div className="mt-3 flex justify-center gap-1">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="w-1.5 h-1.5 rounded-full bg-ucl-gold/40" />
@@ -82,7 +84,7 @@ export default function LoginPage() {
                     : "text-ucl-silver hover:text-ucl-white"
                 }`}
               >
-                {m === "login" ? "Entrar" : "Registrarse"}
+                {m === "login" ? t("auth.tabLogin") : t("auth.tabRegister")}
               </button>
             ))}
           </div>
@@ -90,14 +92,14 @@ export default function LoginPage() {
           <div className="space-y-4">
             {mode === "register" && (
               <div>
-                <label className="block text-xs text-ucl-silver/70 mb-1.5 font-mono uppercase">Tu Equipo</label>
+                <label className="block text-xs text-ucl-silver/70 mb-1.5 font-mono uppercase">{t("auth.yourTeam")}</label>
                 <select
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
                   className="input-base w-full"
-                  aria-label="Selecciona tu equipo"
+                  aria-label={t("auth.selectTeamAria")}
                 >
-                  <option value="">— Selecciona tu equipo —</option>
+                  <option value="">{t("auth.selectTeamPlaceholder")}</option>
                   {playerTeams.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
@@ -106,20 +108,20 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-xs text-ucl-silver/70 mb-1.5 font-mono uppercase">Email</label>
+              <label className="block text-xs text-ucl-silver/70 mb-1.5 font-mono uppercase">{t("auth.email")}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                placeholder="tu@email.com"
+                placeholder={t("auth.emailPlaceholder")}
                 className="input-base w-full"
-                aria-label="Correo electrónico"
+                aria-label={t("auth.emailAria")}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-ucl-silver/70 mb-1.5 font-mono uppercase">Contraseña</label>
+              <label className="block text-xs text-ucl-silver/70 mb-1.5 font-mono uppercase">{t("auth.password")}</label>
               <input
                 type="password"
                 value={password}
@@ -127,7 +129,7 @@ export default function LoginPage() {
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 placeholder="••••••••"
                 className="input-base w-full"
-                aria-label="Contraseña"
+                aria-label={t("auth.password")}
               />
             </div>
 
@@ -142,14 +144,14 @@ export default function LoginPage() {
               disabled={loading}
               className="btn-primary w-full flex items-center justify-center gap-2 mt-2"
             >
-              {loading ? <><Spinner size="sm" /> Cargando...</> :
-               mode === "login" ? "Entrar a la Quiniela" : "Crear cuenta"}
+              {loading ? <><Spinner size="sm" /> {t("common.loading")}</> :
+               mode === "login" ? t("auth.submitLogin") : t("auth.submitRegister")}
             </button>
           </div>
         </div>
 
         <p className="text-center text-ucl-silver/40 text-xs mt-6 font-mono">
-          Mundial FIFA © 2026
+          {t("brand.copyright")}
         </p>
       </div>
     </div>
