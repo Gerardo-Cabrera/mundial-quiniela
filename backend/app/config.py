@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     CALC_POINTS_MINUTES: int = 30
     JOB_MAX_RETRIES: int = 3
     JOB_RETRY_DELAY_SECONDS: int = 10
+    # Tolerancia de "misfire": si una corrida programada se retrasa (suspensión del
+    # equipo en desarrollo, reload, pausa larga del loop), se ejecuta igual dentro de
+    # este plazo en vez de descartarse. Con coalesce, las corridas acumuladas se
+    # colapsan en una sola (los jobs son idempotentes, así que la corrida tardía es
+    # segura). Evita que los datos queden congelados tras una pausa del proceso.
+    JOB_MISFIRE_GRACE_SECONDS: int = 3600
     # Fallback de finalización: si un partido de FASE DE GRUPOS sigue marcado LIVE
     # pasado este plazo desde el kickoff, se considera finalizado (los partidos
     # duran ~2 h). No aplica a eliminatorias (prórroga/penales pueden superarlo).

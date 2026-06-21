@@ -19,10 +19,6 @@ export const matchesApi = {
     const { data } = await apiClient.get(`/api/matches/${id}/players`);
     return data;
   },
-  forceSync: async () => {
-    const { data } = await apiClient.post("/api/matches/sync");
-    return data;
-  },
 };
 
 // ── PREDICTIONS ───────────────────────────────────────────────────────────────
