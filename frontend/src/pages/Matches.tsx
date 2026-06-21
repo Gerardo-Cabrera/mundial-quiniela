@@ -7,22 +7,19 @@ import { PredictionModal } from "@/components/PredictionModal";
 import { Spinner, EmptyState } from "@/components/ui";
 import type { Match, MatchPhase } from "@/types";
 import { groupMatchesByDay } from "@/types";
+import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
 
-const PHASES: { value: MatchPhase | "all"; label: string }[] = [
-  { value: "all",            label: "Todos" },
-  { value: "group_stage",    label: "Grupos" },
-  { value: "round_of_32",    label: "16avos" },
-  { value: "round_of_16",    label: "8vos" },
-  { value: "quarter_finals", label: "Cuartos" },
-  { value: "semi_finals",    label: "Semis" },
-  { value: "third_place",    label: "3er Puesto" },
-  { value: "final",          label: "Final" },
+// Las etiquetas se traducen en render (claves `phaseShort.*` en i18n).
+const PHASE_VALUES: (MatchPhase | "all")[] = [
+  "all", "group_stage", "round_of_32", "round_of_16",
+  "quarter_finals", "semi_finals", "third_place", "final",
 ];
 
 export default function MatchesPage() {
   const [phase, setPhase]   = useState<MatchPhase | "all">("all");
   const [selected, setSelected] = useState<Match | null>(null);
+  const { t } = useTranslation();
 
   // Solo partidos pronosticables: programados (la jornada cerrada se filtra abajo).
   const { data: matches, isLoading } = useMatches({
@@ -46,13 +43,13 @@ export default function MatchesPage() {
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="font-display text-3xl sm:text-4xl text-ucl-gold">Partidos</h1>
-        <p className="text-ucl-silver/60 text-sm mt-1">Por pronosticar · Mundial FIFA 2026</p>
+        <h1 className="font-display text-3xl sm:text-4xl text-ucl-gold">{t("matches.title")}</h1>
+        <p className="text-ucl-silver/60 text-sm mt-1">{t("matches.subtitle")}</p>
       </div>
 
       {/* Filtro por fase */}
       <div className="flex gap-2 flex-wrap">
-        {PHASES.map(({ value, label }) => (
+        {PHASE_VALUES.map((value) => (
           <button
             key={value}
             onClick={() => setPhase(value)}
@@ -63,7 +60,7 @@ export default function MatchesPage() {
                 : "border border-ucl-blue/50 text-ucl-silver hover:border-ucl-gold hover:text-ucl-gold"
             )}
           >
-            {label}
+            {t(`phaseShort.${value}`)}
           </button>
         ))}
       </div>
@@ -72,7 +69,7 @@ export default function MatchesPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : !openDays.length ? (
-        <EmptyState icon="✅" title="Sin partidos por pronosticar" description="No hay jornadas abiertas para los filtros seleccionados. Mira los resultados en la sección Resultados." />
+        <EmptyState icon="✅" title={t("matches.emptyTitle")} description={t("matches.emptyDescription")} />
       ) : (
         <div className="space-y-8">
           {openDays.map(({ day, matches: dayMatches }) => (

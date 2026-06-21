@@ -19,6 +19,7 @@ from app.models.prediction import Prediction
 from app.models.user import User
 from app.services import scheduler as scheduler_module
 from app.services import football_api
+from app.crud import match_crud
 from tests.conftest import TestSessionLocal
 
 # id del jugador que se usa como goleador pronosticado en los seeds.
@@ -267,8 +268,79 @@ async def test_sync_fixtures_upserts_idempotently(monkeypatch):
         assert rows[7001].status == MatchStatus.FINISHED
 
 
+@pytest.mark.asyncio
+async def test_has_match_pending_finish():
+    """True si hay un partido SCHEDULED/LIVE cuyo kickoff fue antes del corte."""
+    now = datetime.now(timezone.utc)
+    async with TestSessionLocal() as session:
+        session.add_all([
+            Match(api_fixture_id=8001, home_team="A", away_team="B",
+                  phase=MatchPhase.GROUP_STAGE, status=MatchStatus.LIVE,
+                  match_date=now - timedelta(minutes=120)),   # podría estar terminando
+            Match(api_fixture_id=8002, home_team="C", away_team="D",
+                  phase=MatchPhase.GROUP_STAGE, status=MatchStatus.LIVE,
+                  match_date=now - timedelta(minutes=10)),     # recién empezado
+            Match(api_fixture_id=8003, home_team="E", away_team="F",
+                  phase=MatchPhase.GROUP_STAGE, status=MatchStatus.FINISHED,
+                  match_date=now - timedelta(minutes=200)),    # ya finalizado
+        ])
+        await session.commit()
+    async with TestSessionLocal() as db:
+        assert await match_crud.has_match_pending_finish(db, before=now - timedelta(minutes=105)) is True
+
+
+@pytest.mark.asyncio
+async def test_has_match_pending_finish_false_when_recent_or_finished():
+    """False si solo hay partidos recién empezados o ya finalizados."""
+    now = datetime.now(timezone.utc)
+    async with TestSessionLocal() as session:
+        session.add_all([
+            Match(api_fixture_id=8004, home_team="C", away_team="D",
+                  phase=MatchPhase.GROUP_STAGE, status=MatchStatus.LIVE,
+                  match_date=now - timedelta(minutes=10)),
+            Match(api_fixture_id=8005, home_team="E", away_team="F",
+                  phase=MatchPhase.GROUP_STAGE, status=MatchStatus.FINISHED,
+                  match_date=now - timedelta(minutes=200)),
+        ])
+        await session.commit()
+    async with TestSessionLocal() as db:
+        assert await match_crud.has_match_pending_finish(db, before=now - timedelta(minutes=105)) is False
+
+
+@pytest.mark.asyncio
+async def test_sync_fixtures_skips_when_nothing_pending(monkeypatch):
+    """No consulta la API si no hay partido por terminar y ya sincronizó hace poco."""
+    calls = {"n": 0}
+    async def counting_fetch(*a, **k):
+        calls["n"] += 1
+        return []
+    monkeypatch.setattr(football_api, "fetch_fixtures", counting_fetch)
+    monkeypatch.setattr(scheduler_module, "_last_fixtures_fetch",
+                        datetime.now(timezone.utc) - timedelta(minutes=1))
+    await scheduler_module.sync_fixtures()
+    assert calls["n"] == 0
+
+
+@pytest.mark.asyncio
+async def test_sync_fixtures_fetches_in_finish_window(monkeypatch):
+    """Consulta la API si hay un partido que pudo terminar, aunque acabe de sincronizar."""
+    calls = {"n": 0}
+    async def counting_fetch(*a, **k):
+        calls["n"] += 1
+        return []
+    monkeypatch.setattr(football_api, "fetch_fixtures", counting_fetch)
+    monkeypatch.setattr(scheduler_module, "_last_fixtures_fetch", datetime.now(timezone.utc))
+    async with TestSessionLocal() as session:
+        session.add(Match(api_fixture_id=8006, home_team="A", away_team="B",
+                          phase=MatchPhase.GROUP_STAGE, status=MatchStatus.LIVE,
+                          match_date=datetime.now(timezone.utc) - timedelta(minutes=150)))
+        await session.commit()
+    await scheduler_module.sync_fixtures()
+    assert calls["n"] == 1
+
+
 def test_parse_fixture_finish_fallback_group_stage():
-    """Un partido de grupos aún LIVE pasadas >2 h del kickoff se da por finalizado."""
+    """Un partido de grupos aún LIVE pasado el plazo de finalización (135 min) se da por finalizado."""
     old = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
     raw = _raw_fixture(9001, home_score=0, away_score=1, status="1H",
                        round_="Group Stage - 1", date=old)
@@ -276,18 +348,19 @@ def test_parse_fixture_finish_fallback_group_stage():
 
 
 def test_parse_fixture_no_fallback_for_knockout():
-    """En eliminatorias manda la API (prórroga/penales superan 2 h): sigue LIVE."""
+    """En eliminatorias manda la API (prórroga/penales pueden superar el plazo): sigue LIVE."""
     old = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
     raw = _raw_fixture(9002, home_score=1, away_score=1, status="ET",
                        round_="Round of 16", date=old)
     assert football_api.parse_fixture(raw)["status"] == MatchStatus.LIVE
 
 
-def test_parse_fixture_no_fallback_recent_match():
-    """Un partido reciente (dentro del plazo) sigue LIVE."""
-    recent = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+def test_parse_fixture_no_fallback_within_window():
+    """Un partido de grupos aún dentro del plazo (a 2 h, antes de los 135 min) sigue
+    LIVE: no se finaliza prematuramente por ir en añadido largo."""
+    within = (datetime.now(timezone.utc) - timedelta(minutes=120)).isoformat()
     raw = _raw_fixture(9003, home_score=0, away_score=0, status="2H",
-                       round_="Group Stage - 1", date=recent)
+                       round_="Group Stage - 1", date=within)
     assert football_api.parse_fixture(raw)["status"] == MatchStatus.LIVE
 
 

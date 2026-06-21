@@ -5,10 +5,12 @@ import { useMatches, useMyPredictions } from "@/hooks";
 import { MatchCard } from "@/components/MatchCard";
 import { Spinner, EmptyState } from "@/components/ui";
 import { groupMatchesByDay } from "@/types";
+import { useTranslation } from "react-i18next";
 
 export default function ResultsPage() {
   const { data: matches, isLoading } = useMatches();
   const { data: predictions } = useMyPredictions();
+  const { t } = useTranslation();
 
   const predictionByMatch = Object.fromEntries(
     (predictions ?? []).map((p) => [p.match_id, p])
@@ -26,14 +28,14 @@ export default function ResultsPage() {
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="font-display text-3xl sm:text-4xl text-ucl-gold">Resultados</h1>
-        <p className="text-ucl-silver/60 text-sm mt-1">Resultados reales por jornada · Mundial FIFA 2026</p>
+        <h1 className="font-display text-3xl sm:text-4xl text-ucl-gold">{t("results.title")}</h1>
+        <p className="text-ucl-silver/60 text-sm mt-1">{t("results.subtitle")}</p>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : !days.length ? (
-        <EmptyState icon="📊" title="Sin resultados aún" description="Cuando se jueguen los partidos, sus resultados reales aparecerán aquí." />
+        <EmptyState icon="📊" title={t("results.emptyTitle")} description={t("results.emptyDescription")} />
       ) : (
         <div className="space-y-8">
           {days.map(({ day, matches: dayMatches }) => (

@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 import type { MatchStatus } from "@/types";
 
 // ── CARD ──────────────────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ export function EmptyState({ icon, title, description }: {
 // ── POINTS CHIP ───────────────────────────────────────────────────────────────
 
 export function PointsChip({ points }: { points: number }) {
+  const { t } = useTranslation();
   return (
     <span className={clsx(
       "inline-flex items-center gap-1 font-mono text-sm font-bold px-2.5 py-0.5 rounded-full",
@@ -91,7 +93,7 @@ export function PointsChip({ points }: { points: number }) {
         ? "bg-ucl-gold/20 text-ucl-gold border border-ucl-gold/30"
         : "bg-ucl-silver/10 text-ucl-silver/50 border border-ucl-silver/20"
     )}>
-      {points > 0 ? `+${points}` : points} pts
+      {points > 0 ? `+${points}` : points} {t("common.pts")}
     </span>
   );
 }
@@ -99,10 +101,11 @@ export function PointsChip({ points }: { points: number }) {
 // ── STATUS DOT ────────────────────────────────────────────────────────────────
 
 export function StatusDot({ status }: { status: MatchStatus }) {
+  const { t } = useTranslation();
   if (status === "live") {
     return (
       <span className="flex items-center gap-1.5 text-red-400 text-xs font-semibold">
-        <span className="live-dot" /> EN VIVO
+        <span className="live-dot" /> {t("status.liveBadge")}
       </span>
     );
   }
@@ -112,11 +115,5 @@ export function StatusDot({ status }: { status: MatchStatus }) {
     finished:  "text-green-400/80",
     postponed: "text-yellow-500/70",
   };
-  const labels: Record<MatchStatus, string> = {
-    live:      "En Vivo",
-    scheduled: "Programado",
-    finished:  "Finalizado",
-    postponed: "Pospuesto",
-  };
-  return <span className={clsx("text-xs", styles[status])}>{labels[status]}</span>;
+  return <span className={clsx("text-xs", styles[status])}>{t(`status.${status}`)}</span>;
 }

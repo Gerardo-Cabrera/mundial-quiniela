@@ -1,18 +1,20 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { Trophy, CalendarDays, Goal, ListChecks, LogOut, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { clsx } from "clsx";
 
 const NAV_ITEMS = [
-  { to: "/",            label: "Tabla",      icon: Trophy },
-  { to: "/matches",     label: "Partidos",   icon: CalendarDays },
-  { to: "/results",     label: "Resultados", icon: Goal },
-  { to: "/predictions", label: "Pronósticos",icon: ListChecks },
+  { to: "/",            labelKey: "nav.table",       icon: Trophy },
+  { to: "/matches",     labelKey: "nav.matches",     icon: CalendarDays },
+  { to: "/results",     labelKey: "nav.results",     icon: Goal },
+  { to: "/predictions", labelKey: "nav.predictions", icon: ListChecks },
 ];
 
 export function Navbar() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     logout();
@@ -25,13 +27,13 @@ export function Navbar() {
       <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-full w-56 bg-ucl-navy border-r border-ucl-blue/40 z-50">
         {/* Logo */}
         <div className="px-6 py-6 border-b border-ucl-blue/30">
-          <h1 className="font-display text-3xl text-ucl-gold tracking-wider">MUNDIAL</h1>
-          <p className="text-ucl-silver/60 text-xs mt-0.5 font-mono">QUINIELA 2026</p>
+          <h1 className="font-display text-3xl text-ucl-gold tracking-wider">{t("brand.name")}</h1>
+          <p className="text-ucl-silver/60 text-xs mt-0.5 font-mono">{t("brand.tagline")}</p>
         </div>
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+          {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -46,7 +48,7 @@ export function Navbar() {
               }
             >
               <Icon size={17} />
-              {label}
+              {t(labelKey)}
             </NavLink>
           ))}
         </nav>
@@ -60,14 +62,14 @@ export function Navbar() {
             <span className="text-xs text-ucl-silver truncate">{user?.team_name}</span>
           </div>
           <button onClick={handleLogout} className="btn-secondary w-full flex items-center justify-center gap-2 text-sm py-2">
-            <LogOut size={14} /> Salir
+            <LogOut size={14} /> {t("nav.logout")}
           </button>
         </div>
       </aside>
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-ucl-navy/95 backdrop-blur border-t border-ucl-blue/40 flex">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+        {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -80,7 +82,7 @@ export function Navbar() {
             }
           >
             <Icon size={20} />
-            <span>{label}</span>
+            <span>{t(labelKey)}</span>
           </NavLink>
         ))}
       </nav>

@@ -53,6 +53,24 @@ class MatchCRUD:
         ]
         return min(kickoffs) if kickoffs else ref
 
+    async def has_match_pending_finish(self, db: AsyncSession, *, before: datetime) -> bool:
+        """¿Hay algún partido SCHEDULED/LIVE cuyo kickoff fue antes de `before`?
+
+        Es decir, un partido que ya pudo haber terminado y aún no está FINISHED.
+        Define la "ventana de finalización": mientras devuelva True conviene consultar
+        la API seguido para captar el `FT` a tiempo. Excluye FINISHED y POSTPONED para
+        no consultar indefinidamente.
+        """
+        result = await db.execute(
+            select(Match.id)
+            .where(
+                Match.status.in_([MatchStatus.SCHEDULED, MatchStatus.LIVE]),
+                Match.match_date <= before,
+            )
+            .limit(1)
+        )
+        return result.first() is not None
+
     async def upsert_many(self, db: AsyncSession, fixtures: list[dict]) -> int:
         """
         Inserta o actualiza partidos por api_fixture_id. Retorna cuántos se

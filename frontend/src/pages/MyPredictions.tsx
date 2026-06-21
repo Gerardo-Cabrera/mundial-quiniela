@@ -3,12 +3,14 @@ import { Spinner, EmptyState, PointsChip, Badge } from "@/components/ui";
 import { Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { PHASE_LABELS, isFirstGoalHit } from "@/types";
+import { isFirstGoalHit } from "@/types";
+import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
 
 export default function MyPredictionsPage() {
   const { data: predictions, isLoading } = useMyPredictions();
   const { mutate: deletePred }           = useDeletePrediction();
+  const { t } = useTranslation();
 
   const totalPoints = predictions?.reduce((s, p) => s + p.points_earned, 0) ?? 0;
   const calculated  = predictions?.filter((p) => p.is_calculated).length ?? 0;
@@ -17,13 +19,13 @@ export default function MyPredictionsPage() {
     <div className="space-y-6 animate-in">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl text-ucl-gold">Mis Pronósticos</h1>
-          <p className="text-ucl-silver/60 text-sm mt-1">{predictions?.length ?? 0} pronósticos registrados</p>
+          <h1 className="font-display text-3xl sm:text-4xl text-ucl-gold">{t("myPredictions.title")}</h1>
+          <p className="text-ucl-silver/60 text-sm mt-1">{t("myPredictions.registered", { n: predictions?.length ?? 0 })}</p>
         </div>
         {calculated > 0 && (
           <div className="text-right">
             <p className="font-display text-4xl text-ucl-gold">{totalPoints}</p>
-            <p className="text-xs text-ucl-silver/60 font-mono">PTS PARTIDOS</p>
+            <p className="text-xs text-ucl-silver/60 font-mono">{t("myPredictions.matchPoints")}</p>
           </div>
         )}
       </div>
@@ -33,8 +35,8 @@ export default function MyPredictionsPage() {
       ) : !predictions?.length ? (
         <EmptyState
           icon="🎯"
-          title="Sin pronósticos"
-          description="Ve a la sección de Partidos para registrar tus pronósticos."
+          title={t("myPredictions.emptyTitle")}
+          description={t("myPredictions.emptyDescription")}
         />
       ) : (
         <div className="space-y-3">
@@ -68,14 +70,14 @@ export default function MyPredictionsPage() {
                 {/* Match info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
-                    {match.home_team} <span className="text-ucl-silver/40">vs</span> {match.away_team}
+                    {match.home_team} <span className="text-ucl-silver/40">{t("common.vs")}</span> {match.away_team}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs text-ucl-silver/50 font-mono">
                       {format(new Date(match.match_date), "d MMM", { locale: es })}
                     </span>
                     <Badge variant={match.phase === "group_stage" ? "blue" : "gold"}>
-                      {PHASE_LABELS[match.phase]}
+                      {t(`phase.${match.phase}`)}
                     </Badge>
                   </div>
                   {(pred.first_goal_player || (match.status === "finished" && match.first_goal_player)) && (
@@ -86,10 +88,10 @@ export default function MyPredictionsPage() {
                           {pred.first_goal_player}
                         </span>
                       ) : (
-                        <span className="italic">sin goleador</span>
+                        <span className="italic">{t("myPredictions.noScorer")}</span>
                       )}
                       {match.status === "finished" && match.first_goal_player && (
-                        <span className="text-ucl-silver/40"> · real: {match.first_goal_player}</span>
+                        <span className="text-ucl-silver/40">{t("myPredictions.realScorer", { name: match.first_goal_player })}</span>
                       )}
                       {goalResolved && pred.first_goal_player_id != null && (
                         <span className={goalHit ? "text-ucl-gold" : "text-ucl-silver/40"}> {goalHit ? "✓" : "✗"}</span>
@@ -108,7 +110,7 @@ export default function MyPredictionsPage() {
                   </p>
                   {match.status === "finished" && (
                     <p className="text-xs text-ucl-silver/50 font-mono">
-                      Real: {match.home_score} - {match.away_score}
+                      {t("common.realScore", { home: match.home_score, away: match.away_score })}
                     </p>
                   )}
                 </div>
@@ -121,7 +123,7 @@ export default function MyPredictionsPage() {
                     <button
                       onClick={() => deletePred(pred.id)}
                       className="text-ucl-silver/30 hover:text-red-400 transition-colors p-1"
-                      title="Eliminar pronóstico"
+                      title={t("myPredictions.deleteTooltip")}
                     >
                       <Trash2 size={15} />
                     </button>
