@@ -191,14 +191,15 @@ def parse_fixture(fixture_data: dict) -> dict:
     status     = STATUS_MAP.get(raw_status, MatchStatus.SCHEDULED)
     match_date = datetime.fromisoformat(f["date"])
 
-    # Fallback de finalización: un partido de grupos que sigue LIVE pasadas ~2 h
-    # del kickoff se da por finalizado (duran ~2 h). Las eliminatorias pueden ir a
-    # prórroga/penales, así que ahí se respeta el estado de la API.
+    # Fallback de finalización: un partido de grupos que sigue LIVE pasados
+    # MATCH_FINISH_FALLBACK_MINUTES (135 min) del kickoff se da por finalizado (90' +
+    # descanso + añadido + margen). Las eliminatorias pueden ir a prórroga/penales,
+    # así que ahí se respeta el estado de la API.
     if (
         status == MatchStatus.LIVE
         and phase == MatchPhase.GROUP_STAGE
         and datetime.now(timezone.utc) - match_date
-            > timedelta(hours=settings.MATCH_FINISH_FALLBACK_HOURS)
+            > timedelta(minutes=settings.MATCH_FINISH_FALLBACK_MINUTES)
     ):
         status = MatchStatus.FINISHED
 

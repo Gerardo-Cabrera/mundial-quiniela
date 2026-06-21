@@ -32,6 +32,10 @@ scheduler = AsyncIOScheduler(
     }
 )
 
+# Última vez que el sync de fixtures SÍ llamó a la API (no la última vez que cambió un
+# dato): pacea las corridas de respaldo cuando no hay partidos por terminar.
+_last_fixtures_fetch: datetime | None = None
+
 
 async def _retry(coro_func, job_name: str) -> None:
     """Ejecuta una coroutine con reintentos en caso de fallo."""
@@ -72,9 +76,26 @@ async def _do_sync_fixtures():
 
 
 async def sync_fixtures():
-    """Sincroniza fixtures del Mundial desde API-Football. Se ejecuta cada 6 horas."""
+    """Sincroniza fixtures, pero **solo cuando aporta** (sync adaptativo): consulta a
+    la API seguido mientras haya un partido que pudo terminar (pasados
+    MATCH_MIN_DURATION_MINUTES del kickoff y aún sin FINISHED), y de forma espaciada
+    (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo. Evita consultar a ciegas un
+    partido en sus primeros minutos, cuando todavía no puede haber terminado."""
+    global _last_fixtures_fetch
+    now = datetime.now(timezone.utc)
+    async with AsyncSessionLocal() as db:
+        near_finish = await match_crud.has_match_pending_finish(
+            db, before=now - timedelta(minutes=settings.MATCH_MIN_DURATION_MINUTES)
+        )
+    idle_due = (
+        _last_fixtures_fetch is None
+        or now - _last_fixtures_fetch >= timedelta(minutes=settings.SYNC_FIXTURES_IDLE_MINUTES)
+    )
+    if not (near_finish or idle_due):
+        return
     logger.info("Starting fixture sync...")
     await _retry(_do_sync_fixtures, "sync_fixtures")
+    _last_fixtures_fetch = now
 
 
 async def _do_sync_teams():
@@ -262,7 +283,7 @@ def start_scheduler():
     # cambian (lesiones, altas) → cada pocos días. Ambas antes que goles/puntos.
     scheduler.add_job(sync_teams,          DateTrigger(run_date=now),                               id="sync_teams",      replace_existing=True)
     scheduler.add_job(sync_players,        IntervalTrigger(hours=settings.SYNC_PLAYERS_HOURS),      id="sync_players",    replace_existing=True, next_run_time=now + timedelta(seconds=10))
-    scheduler.add_job(sync_fixtures,       IntervalTrigger(hours=settings.SYNC_FIXTURES_HOURS),     id="sync_fixtures",   replace_existing=True, next_run_time=now + timedelta(seconds=20))
+    scheduler.add_job(sync_fixtures,       IntervalTrigger(minutes=settings.SYNC_FIXTURES_MINUTES), id="sync_fixtures",   replace_existing=True, next_run_time=now + timedelta(seconds=20))
     scheduler.add_job(sync_first_goals,         IntervalTrigger(hours=settings.SYNC_GOALS_HOURS),        id="sync_goals",      replace_existing=True, next_run_time=now + timedelta(seconds=50))
     scheduler.add_job(calculate_pending_points, IntervalTrigger(minutes=settings.CALC_POINTS_MINUTES),   id="calc_points",     replace_existing=True, next_run_time=now + timedelta(seconds=80))
     scheduler.start()

@@ -38,7 +38,15 @@ class Settings(BaseSettings):
     # (Las selecciones no llevan intervalo: se sincronizan una sola vez al
     # arrancar porque no cambian durante el torneo.)
     SYNC_PLAYERS_HOURS: int = 72  # plantillas: cada ~3 días (cambian por lesiones, altas)
-    SYNC_FIXTURES_HOURS: int = 2   # marcadores/estado: cada 2 h para reflejar live→finished a tiempo
+    # Sync de fixtures ADAPTATIVO: no consulta a la API a ciegas. Consulta seguido
+    # (cada SYNC_FIXTURES_MINUTES) SOLO cuando un partido podría estar terminando
+    # —pasados MATCH_MIN_DURATION_MINUTES del kickoff y aún sin FINISHED—, y de forma
+    # espaciada (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo (para captar kickoffs,
+    # marcadores y fixtures nuevos). Así no se gasta cuota consultando un partido en su
+    # minuto 3, 6, 9... cuando todavía no puede haber terminado.
+    SYNC_FIXTURES_MINUTES: int = 3        # cadencia mientras un partido está en ventana de finalización
+    SYNC_FIXTURES_IDLE_MINUTES: int = 30  # cadencia de respaldo cuando no hay partidos por terminar
+    MATCH_MIN_DURATION_MINUTES: int = 110  # antes de esto un partido no puede haber terminado
     SYNC_GOALS_HOURS: int = 1
     CALC_POINTS_MINUTES: int = 30
     JOB_MAX_RETRIES: int = 3
@@ -50,9 +58,10 @@ class Settings(BaseSettings):
     # segura). Evita que los datos queden congelados tras una pausa del proceso.
     JOB_MISFIRE_GRACE_SECONDS: int = 3600
     # Fallback de finalización: si un partido de FASE DE GRUPOS sigue marcado LIVE
-    # pasado este plazo desde el kickoff, se considera finalizado (los partidos
-    # duran ~2 h). No aplica a eliminatorias (prórroga/penales pueden superarlo).
-    MATCH_FINISH_FALLBACK_HOURS: int = 2
+    # pasados estos MINUTOS desde el kickoff, se considera finalizado. 135 min cubre
+    # 90' + descanso + añadido + margen, sin finalizar uno que aún va en añadido
+    # largo. No aplica a eliminatorias (prórroga/penales pueden superarlo).
+    MATCH_FINISH_FALLBACK_MINUTES: int = 135
 
     # Rate limiting
     RATE_LIMIT_ENABLED: bool = True
