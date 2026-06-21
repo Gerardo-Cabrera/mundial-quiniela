@@ -19,10 +19,13 @@ export default function MatchesPage() {
   const [selected, setSelected] = useState<Match | null>(null);
   const { t } = useTranslation();
 
-  // Solo partidos pronosticables: programados (la jornada cerrada se filtra abajo).
+  // Todos los partidos del filtro (no solo "scheduled"): la jornada cierra según
+  // el PRIMER partido del día, que puede estar ya live/finished. Filtrar a
+  // "scheduled" ocultaría ese primer partido y el cierre se calcularía con uno
+  // posterior (jornada falsamente "abierta"). Las jornadas abiertas solo contienen
+  // partidos futuros, así que todos son pronosticables.
   const { data: matches, isLoading } = useMatches({
-    status: "scheduled",
-    phase:  phase !== "all" ? phase : undefined,
+    phase: phase !== "all" ? phase : undefined,
   });
 
   const { data: predictions } = useMyPredictions();
