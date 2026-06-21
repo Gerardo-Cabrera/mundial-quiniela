@@ -85,34 +85,23 @@ def _extract_response(data: dict, endpoint: str) -> list[dict]:
     return data.get("response", [])
 
 
-async def fetch_fixtures(season: int | None = None) -> list[dict]:
-    """
-    Obtiene todos los fixtures del Mundial para la temporada indicada.
-    """
-    response = await get_client().get(
-        f"{BASE_URL}/fixtures",
-        params={
-            "league": settings.LEAGUE_ID,
-            "season": season or settings.SEASON,
-        },
-    )
+async def _get(endpoint: str, params: dict) -> list[dict]:
+    """GET a un endpoint de API-Football: lanza ante error HTTP y devuelve
+    'response' validando el campo 'errors' (que llega con HTTP 200). El nombre del
+    endpoint sirve también de etiqueta para los logs de `_extract_response`."""
+    response = await get_client().get(f"{BASE_URL}/{endpoint}", params=params)
     response.raise_for_status()
-    return _extract_response(response.json(), "fixtures")
+    return _extract_response(response.json(), endpoint)
+
+
+async def fetch_fixtures(season: int | None = None) -> list[dict]:
+    """Obtiene todos los fixtures del Mundial para la temporada indicada."""
+    return await _get("fixtures", {"league": settings.LEAGUE_ID, "season": season or settings.SEASON})
 
 
 async def fetch_teams(season: int | None = None) -> list[dict]:
-    """
-    Obtiene las selecciones participantes del Mundial para la temporada indicada.
-    """
-    response = await get_client().get(
-        f"{BASE_URL}/teams",
-        params={
-            "league": settings.LEAGUE_ID,
-            "season": season or settings.SEASON,
-        },
-    )
-    response.raise_for_status()
-    return _extract_response(response.json(), "teams")
+    """Obtiene las selecciones participantes del Mundial para la temporada indicada."""
+    return await _get("teams", {"league": settings.LEAGUE_ID, "season": season or settings.SEASON})
 
 
 def parse_team(team_data: dict) -> dict:
@@ -128,16 +117,9 @@ def parse_team(team_data: dict) -> dict:
 
 
 async def fetch_squad(team_api_id: int) -> list[dict]:
-    """
-    Obtiene la plantilla (squad) de un equipo desde `/players/squads`.
-    No depende de la temporada: devuelve el plantel actual del equipo.
-    """
-    response = await get_client().get(
-        f"{BASE_URL}/players/squads",
-        params={"team": team_api_id},
-    )
-    response.raise_for_status()
-    return _extract_response(response.json(), "players/squads")
+    """Obtiene la plantilla (squad) de un equipo desde `/players/squads`.
+    No depende de la temporada: devuelve el plantel actual del equipo."""
+    return await _get("players/squads", {"team": team_api_id})
 
 
 def parse_squad(squad_data: dict) -> list[dict]:
@@ -164,16 +146,8 @@ def parse_squad(squad_data: dict) -> list[dict]:
 
 
 async def fetch_fixture_events(fixture_id: int) -> list[dict]:
-    """
-    Obtiene los eventos de un partido (goles, tarjetas, etc.)
-    para determinar el primer gol.
-    """
-    response = await get_client().get(
-        f"{BASE_URL}/fixtures/events",
-        params={"fixture": fixture_id},
-    )
-    response.raise_for_status()
-    return _extract_response(response.json(), "fixtures/events")
+    """Obtiene los eventos de un partido (goles, tarjetas, etc.) para determinar el primer gol."""
+    return await _get("fixtures/events", {"fixture": fixture_id})
 
 
 def parse_fixture(fixture_data: dict) -> dict:
