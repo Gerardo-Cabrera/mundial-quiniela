@@ -21,7 +21,16 @@ from app.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
-scheduler = AsyncIOScheduler()
+# coalesce + misfire_grace_time: tras una pausa del proceso (suspensión del equipo
+# en desarrollo, reload, pausa larga del loop) las corridas perdidas se ejecutan al
+# reanudar —colapsadas en una sola— en vez de descartarse en silencio. Los jobs son
+# idempotentes, por lo que la corrida tardía es segura.
+scheduler = AsyncIOScheduler(
+    job_defaults={
+        "coalesce": True,
+        "misfire_grace_time": settings.JOB_MISFIRE_GRACE_SECONDS,
+    }
+)
 
 
 async def _retry(coro_func, job_name: str) -> None:
