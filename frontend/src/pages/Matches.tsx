@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { useMatches, useMyPredictions } from "@/hooks";
-import { MatchCard } from "@/components/MatchCard";
+import { MatchDayGrid } from "@/components/MatchDayGrid";
 import { PredictionModal } from "@/components/PredictionModal";
 import { Spinner, EmptyState } from "@/components/ui";
 import type { Match, MatchPhase } from "@/types";
@@ -21,17 +19,16 @@ export default function MatchesPage() {
   const [selected, setSelected] = useState<Match | null>(null);
   const { t } = useTranslation();
 
-  // Solo partidos pronosticables: programados (la jornada cerrada se filtra abajo).
+  // Todos los partidos del filtro (no solo "scheduled"): la jornada cierra según
+  // el PRIMER partido del día, que puede estar ya live/finished. Filtrar a
+  // "scheduled" ocultaría ese primer partido y el cierre se calcularía con uno
+  // posterior (jornada falsamente "abierta"). Las jornadas abiertas solo contienen
+  // partidos futuros, así que todos son pronosticables.
   const { data: matches, isLoading } = useMatches({
-    status: "scheduled",
-    phase:  phase !== "all" ? phase : undefined,
+    phase: phase !== "all" ? phase : undefined,
   });
 
   const { data: predictions } = useMyPredictions();
-
-  const predictionByMatch = Object.fromEntries(
-    (predictions ?? []).map((p) => [p.match_id, p])
-  );
 
   // Agrupa por día y deja solo las jornadas aún abiertas (las cerradas no se
   // pueden pronosticar; sus resultados se ven en la sección "Resultados").
@@ -71,31 +68,13 @@ export default function MatchesPage() {
       ) : !openDays.length ? (
         <EmptyState icon="✅" title={t("matches.emptyTitle")} description={t("matches.emptyDescription")} />
       ) : (
-        <div className="space-y-8">
-          {openDays.map(({ day, matches: dayMatches }) => (
-            <section key={day} className="space-y-3">
-              <h2 className="font-display text-xl text-ucl-silver capitalize">
-                {format(new Date(`${day}T12:00:00`), "EEEE d 'de' MMMM", { locale: es })}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {dayMatches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    prediction={predictionByMatch[match.id]}
-                    onPredict={setSelected}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <MatchDayGrid days={openDays} predictions={predictions} onPredict={setSelected} />
       )}
 
       {selected && (
         <PredictionModal
           match={selected}
-          prediction={predictionByMatch[selected.id]}
+          prediction={predictions?.find((p) => p.match_id === selected.id)}
           onClose={() => setSelected(null)}
         />
       )}

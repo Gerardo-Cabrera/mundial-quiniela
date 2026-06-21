@@ -231,6 +231,18 @@ async def test_prediction_rejects_absurd_score(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_prediction_rejects_scorer_on_goalless(auth_client: AsyncClient):
+    """Un 0-0 con primer goleador es contradictorio → 422 (no llega al endpoint)."""
+    resp = await auth_client.post("/api/predictions/", json={
+        "match_id": 1,
+        "predicted_home": 0,
+        "predicted_away": 0,
+        "first_goal_player_id": 10,
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_prediction_create_success(auth_client: AsyncClient):
     match_id = await _create_match()
     resp = await auth_client.post("/api/predictions/", json={
