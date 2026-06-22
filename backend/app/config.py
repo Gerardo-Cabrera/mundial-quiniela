@@ -1,5 +1,5 @@
 import json
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 INSECURE_SECRET_KEY = "change-me-in-production"
@@ -121,6 +121,19 @@ class Settings(BaseSettings):
                 "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
             }
         return {"x-apisports-key": self.API_FOOTBALL_KEY}
+
+    # Normaliza el driver de la URL de la BD a asyncpg: los proveedores gestionados
+    # (p. ej. Supabase) entregan la cadena como 'postgresql://...' o 'postgres://...',
+    # pero el engine async usa el dialecto 'postgresql+asyncpg://'. Se hace strip()
+    # primero: un espacio/salto de línea en el .env saltaría el startswith (dejando
+    # un driver sync) y, además, rompería la conexión aunque la URL ya fuera asyncpg.
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _force_asyncpg_driver(cls, v: str) -> str:
+        v = v.strip()
+        if v.startswith(("postgres://", "postgresql://")):
+            v = "postgresql+asyncpg://" + v.split("://", 1)[1]
+        return v
 
     @model_validator(mode="after")
     def _check_production_secret(self) -> "Settings":
