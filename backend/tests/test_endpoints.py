@@ -354,6 +354,36 @@ async def test_prediction_stores_first_goal_player_name(auth_client: AsyncClient
     assert resp.json()["first_goal_player"] == "Neymar"
 
 
+@pytest.mark.asyncio
+async def test_match_players_lists_both_squads(auth_client: AsyncClient):
+    """Devuelve los jugadores de los dos equipos del partido (con su api_player_id),
+    no los de otras selecciones."""
+    match_id = await _create_match()  # Argentina vs Brazil
+    resp = await auth_client.get(f"/api/matches/{match_id}/players")
+    assert resp.status_code == 200
+    ids = {p["api_player_id"] for p in resp.json()}
+    assert ids == {10, 20}  # Messi (Arg) + Neymar (Bra); Müller (Germany) queda fuera
+
+
+@pytest.mark.asyncio
+async def test_match_players_search_filters_by_name(auth_client: AsyncClient):
+    """`search` filtra la plantilla del partido por nombre/apellido (subcadena)."""
+    match_id = await _create_match()  # Argentina vs Brazil
+    resp = await auth_client.get(f"/api/matches/{match_id}/players", params={"search": "messi"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert [p["api_player_id"] for p in data] == [10]  # solo L. Messi
+
+
+@pytest.mark.asyncio
+async def test_match_players_search_treats_wildcards_as_literal(auth_client: AsyncClient):
+    """Los comodines de LIKE se escapan: 'search=%' es subcadena literal, no "todos"."""
+    match_id = await _create_match()  # Argentina vs Brazil (ningún nombre lleva '%')
+    resp = await auth_client.get(f"/api/matches/{match_id}/players", params={"search": "%"})
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
 # ── CONFIG / TEAMS ───────────────────────────────────────────────────────────
 
 

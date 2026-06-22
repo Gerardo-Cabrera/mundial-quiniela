@@ -4,16 +4,23 @@ from app.models.player import Player
 
 
 class PlayerCRUD:
-    async def get_for_teams(self, db: AsyncSession, team_names: list[str]) -> list[Player]:
+    async def get_for_teams(
+        self, db: AsyncSession, team_names: list[str], name_query: str | None = None
+    ) -> list[Player]:
         """Jugadores de los equipos dados (para el selector de primer goleador),
-        ordenados por equipo y nombre."""
+        ordenados por equipo y nombre. `name_query` (opcional) filtra por subcadena
+        del nombre, sin distinguir mayúsculas (sirve para nombre y/o apellido)."""
         if not team_names:
             return []
-        result = await db.execute(
-            select(Player)
-            .where(Player.team_name.in_(team_names))
-            .order_by(Player.team_name, Player.name)
-        )
+        stmt = select(Player).where(Player.team_name.in_(team_names))
+        query = (name_query or "").strip()
+        if query:
+            # Escapa los comodines de LIKE (\ primero, luego % y _) para tratar la
+            # entrada como subcadena LITERAL, no como patrón (si no, 'search=%'
+            # equivaldría a "sin filtro").
+            pattern = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            stmt = stmt.where(Player.name.ilike(f"%{pattern}%", escape="\\"))
+        result = await db.execute(stmt.order_by(Player.team_name, Player.name))
         return list(result.scalars().all())
 
     async def get_by_api_id(self, db: AsyncSession, api_player_id: int) -> Player | None:
