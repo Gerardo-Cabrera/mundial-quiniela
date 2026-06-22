@@ -38,3 +38,10 @@ def test_database_url_normalizes_to_asyncpg():
 def test_database_url_keeps_explicit_driver():
     url = "postgresql+asyncpg://u:p@host:5432/db"
     assert Settings(DATABASE_URL=url).DATABASE_URL == url
+
+
+def test_database_url_trims_whitespace_before_normalizing():
+    # Un espacio/salto de línea en el .env no debe saltar la normalización ni
+    # quedar dentro de la URL (rompería el arranque/migraciones async).
+    s = Settings(DATABASE_URL="  postgresql://u:p@host:5432/db\n")
+    assert s.DATABASE_URL == "postgresql+asyncpg://u:p@host:5432/db"
