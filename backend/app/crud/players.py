@@ -13,8 +13,13 @@ class PlayerCRUD:
         if not team_names:
             return []
         stmt = select(Player).where(Player.team_name.in_(team_names))
-        if name_query:
-            stmt = stmt.where(Player.name.ilike(f"%{name_query}%"))
+        query = (name_query or "").strip()
+        if query:
+            # Escapa los comodines de LIKE (\ primero, luego % y _) para tratar la
+            # entrada como subcadena LITERAL, no como patrón (si no, 'search=%'
+            # equivaldría a "sin filtro").
+            pattern = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            stmt = stmt.where(Player.name.ilike(f"%{pattern}%", escape="\\"))
         result = await db.execute(stmt.order_by(Player.team_name, Player.name))
         return list(result.scalars().all())
 

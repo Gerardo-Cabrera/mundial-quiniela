@@ -375,6 +375,15 @@ async def test_match_players_search_filters_by_name(auth_client: AsyncClient):
     assert [p["api_player_id"] for p in data] == [10]  # solo L. Messi
 
 
+@pytest.mark.asyncio
+async def test_match_players_search_treats_wildcards_as_literal(auth_client: AsyncClient):
+    """Los comodines de LIKE se escapan: 'search=%' es subcadena literal, no "todos"."""
+    match_id = await _create_match()  # Argentina vs Brazil (ningún nombre lleva '%')
+    resp = await auth_client.get(f"/api/matches/{match_id}/players", params={"search": "%"})
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
 # ── CONFIG / TEAMS ───────────────────────────────────────────────────────────
 
 
