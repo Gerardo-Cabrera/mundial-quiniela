@@ -268,6 +268,53 @@ async def test_sync_fixtures_upserts_idempotently(monkeypatch):
         assert rows[7001].status == MatchStatus.FINISHED
 
 
+async def _seed_calculated(points: int) -> int:
+    """Predicción ya puntuada de un partido FINISHED (api_fixture_id=5001)."""
+    pred_id = await _seed(
+        home_score=2, away_score=1,
+        actual_first_goal_team="Argentina", actual_first_goal_player_id=SCORER_ID,
+    )
+    async with TestSessionLocal() as session:
+        pred = await session.get(Prediction, pred_id)
+        pred.is_calculated = True
+        pred.points_earned = points
+        await session.commit()
+    return pred_id
+
+
+@pytest.mark.asyncio
+async def test_upsert_resets_calc_when_finished_score_changes():
+    """Si un partido ya FINISHED cambia de marcador tras puntuar, sus predicciones se
+    resetean para recálculo (corrige el bug de puntos obsoletos)."""
+    pred_id = await _seed_calculated(points=16)
+    corrected = football_api.parse_fixture(
+        _raw_fixture(5001, home_score=3, away_score=1, status="FT")
+    )
+    async with TestSessionLocal() as session:
+        await match_crud.upsert_many(session, [corrected])
+        await session.commit()
+
+    pred = await _get_prediction(pred_id)
+    assert pred.is_calculated is False
+    assert pred.points_earned == 0
+
+
+@pytest.mark.asyncio
+async def test_upsert_keeps_calc_when_score_unchanged():
+    """Re-sincronizar sin cambio de marcador NO resetea (evita recálculos en cada corrida)."""
+    pred_id = await _seed_calculated(points=16)
+    same = football_api.parse_fixture(
+        _raw_fixture(5001, home_score=2, away_score=1, status="FT")
+    )
+    async with TestSessionLocal() as session:
+        await match_crud.upsert_many(session, [same])
+        await session.commit()
+
+    pred = await _get_prediction(pred_id)
+    assert pred.is_calculated is True
+    assert pred.points_earned == 16
+
+
 @pytest.mark.asyncio
 async def test_has_match_pending_finish():
     """True si hay un partido SCHEDULED/LIVE cuyo kickoff fue antes del corte."""
