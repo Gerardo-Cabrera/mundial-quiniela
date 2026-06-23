@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from app.models.match import Match, MatchPhase, MatchStatus
+from app.models.prediction import Prediction
 
 
 def _as_utc(dt: datetime) -> datetime:
@@ -85,13 +86,33 @@ class MatchCRUD:
         result = await db.execute(select(Match))
         existing = {m.api_fixture_id: m for m in result.scalars().all()}
 
+        rescored_ids: list[int] = []
         for parsed in fixtures:
             match = existing.get(parsed["api_fixture_id"])
             if match:
+                # Un partido ya FINISHED cuyo marcador cambia (p. ej. el fallback de
+                # finalización lo marcó FINISHED con un marcador no-final, o la API lo
+                # corrige tarde) deja con puntos obsoletos a sus predicciones ya
+                # calculadas: se marcan para recálculo (igual que sync_first_goals).
+                if parsed["status"] == MatchStatus.FINISHED and (
+                    parsed["home_score"] != match.home_score
+                    or parsed["away_score"] != match.away_score
+                ):
+                    rescored_ids.append(match.id)
                 for key, value in parsed.items():
                     setattr(match, key, value)
             else:
                 db.add(Match(**parsed))
+
+        if rescored_ids:
+            await db.execute(
+                update(Prediction)
+                .where(
+                    Prediction.match_id.in_(rescored_ids),
+                    Prediction.is_calculated == True,  # noqa: E712
+                )
+                .values(is_calculated=False, points_earned=0)
+            )
         await db.flush()
         return len(fixtures)
 
