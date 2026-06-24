@@ -31,8 +31,8 @@ jobs:
       - name: Tests
         run: pytest -q
 
-  frontend-build:
-    name: Frontend · tsc + vite build
+  frontend:
+    name: Frontend · vitest + build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -46,5 +46,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Instalar dependencias
         run: npm ci
+      - name: Tests (vitest)
+        run: npm run test
       - name: Build (type-check + bundle)
         run: npm run build

@@ -45,12 +45,17 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
   const homePlayers = players.filter((p) => p.team_name === match.home_team);
   const awayPlayers = players.filter((p) => p.team_name === match.away_team);
 
+  // Un 0-0 no tiene primer gol: el backend rechaza esa combinación (422), así que
+  // aquí se oculta el selector y nunca se envía goleador (sin romper la selección
+  // previa por si el usuario vuelve a subir el marcador).
+  const isGoalless = homeScore === 0 && awayScore === 0;
+
   const handleSave = () => {
     save({
       match_id:       match.id,
       predicted_home: homeScore,
       predicted_away: awayScore,
-      first_goal_player_id: firstGoalPlayerId ? Number(firstGoalPlayerId) : undefined,
+      first_goal_player_id: !isGoalless && firstGoalPlayerId ? Number(firstGoalPlayerId) : undefined,
     }, { onSuccess: () => setTimeout(onClose, 800) });
   };
 
@@ -97,7 +102,11 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
           <label className="block text-xs text-ucl-silver/70 mb-2 font-mono uppercase tracking-wider">
             ⚽ {t("predictionModal.firstScorerLabel")}
           </label>
-          {playersLoading ? (
+          {isGoalless ? (
+            <p className="text-xs text-ucl-silver/50 italic">
+              {t("predictionModal.goallessNoScorer")}
+            </p>
+          ) : playersLoading ? (
             <div className="input-base w-full flex items-center gap-2 text-ucl-silver/60">
               <Spinner size="sm" /> {t("predictionModal.loadingSquads")}
             </div>

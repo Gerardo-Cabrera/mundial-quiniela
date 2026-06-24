@@ -34,6 +34,11 @@ async def upsert_by_key(
             for k, v in row.items():
                 setattr(obj, k, v)
         else:
-            db.add(model(**row))
+            obj = model(**row)
+            db.add(obj)
+            # Registrarlo en el mapa: si el lote trae otra fila con la MISMA clave,
+            # hará update sobre este objeto (última gana) en vez de un segundo
+            # insert que violaría la constraint UNIQUE en el flush.
+            existing[row[key]] = obj
     await db.flush()
     return len(rows)
