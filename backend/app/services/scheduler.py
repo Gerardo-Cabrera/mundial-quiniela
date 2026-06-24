@@ -158,14 +158,18 @@ async def _do_sync_players():
 
 
 async def _players_are_fresh() -> bool:
-    """¿Se sincronizaron las plantillas hace menos de SYNC_PLAYERS_HOURS?"""
+    """Plantillas 'frescas' = sincronizadas hace < SYNC_PLAYERS_HOURS **y completas**
+    (toda selección con plantilla). La completitud evita que un sync parcial —algunos
+    equipos fallaron pero se comiteó el resto— omita el reintento en el arranque."""
     async with AsyncSessionLocal() as db:
         last = await player_crud.last_synced_at(db)
-    if last is None:
-        return False
-    if last.tzinfo is None:  # SQLite devuelve naive; asumir UTC
-        last = last.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - last < timedelta(hours=settings.SYNC_PLAYERS_HOURS)
+        if last is None:
+            return False
+        if last.tzinfo is None:  # SQLite devuelve naive; asumir UTC
+            last = last.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) - last >= timedelta(hours=settings.SYNC_PLAYERS_HOURS):
+            return False
+        return await player_crud.all_teams_have_players(db)
 
 
 async def sync_players(*, skip_if_fresh: bool = False):

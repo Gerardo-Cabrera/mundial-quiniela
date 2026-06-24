@@ -1,7 +1,8 @@
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, exists
 from app.models.player import Player
+from app.models.team import Team
 from app.crud._upsert import upsert_by_key
 
 
@@ -39,6 +40,17 @@ class PlayerCRUD:
         """`max(updated_at)` de la tabla, o None si está vacía. Permite saltar el
         sync de plantillas en el arranque si ya están frescas."""
         return await db.scalar(select(func.max(Player.updated_at)))
+
+    async def all_teams_have_players(self, db: AsyncSession) -> bool:
+        """True si toda selección de `teams` tiene al menos un jugador. Detecta un
+        sync de plantillas **parcial** (falló la de algún equipo y se comiteó el
+        resto) para no tratarlo como 'fresco' y reintentarlo en el arranque."""
+        missing = await db.scalar(
+            select(func.count())
+            .select_from(Team)
+            .where(~exists().where(Player.team_api_id == Team.api_team_id))
+        )
+        return missing == 0
 
 
 player_crud = PlayerCRUD()

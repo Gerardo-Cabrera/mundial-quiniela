@@ -18,6 +18,7 @@ from app.models.match import Match, MatchPhase, MatchStatus
 from app.models.prediction import Prediction
 from app.models.user import User
 from app.models.player import Player
+from app.models.team import Team
 from app.services import scheduler as scheduler_module
 from app.services import football_api
 from app.crud import match_crud
@@ -269,6 +270,23 @@ async def test_sync_fixtures_upserts_idempotently(monkeypatch):
         assert rows[7001].status == MatchStatus.FINISHED
 
 
+@pytest.mark.asyncio
+async def test_upsert_handles_duplicate_keys_in_batch():
+    """Dos filas con la misma clave en un mismo lote no rompen el flush (UNIQUE):
+    se inserta una sola y la última ocurrencia gana."""
+    f1 = football_api.parse_fixture(_raw_fixture(9100, home_score=1, away_score=0, status="FT"))
+    f2 = football_api.parse_fixture(_raw_fixture(9100, home_score=2, away_score=2, status="FT"))
+    async with TestSessionLocal() as session:
+        await match_crud.upsert_many(session, [f1, f2])
+        await session.commit()
+        rows = (
+            await session.execute(select(Match).where(Match.api_fixture_id == 9100))
+        ).scalars().all()
+    assert len(rows) == 1            # no se duplicó
+    assert rows[0].home_score == 2   # última gana
+    assert rows[0].away_score == 2
+
+
 async def _seed_calculated(points: int) -> int:
     """Predicción ya puntuada de un partido FINISHED (api_fixture_id=5001)."""
     pred_id = await _seed(
@@ -469,18 +487,29 @@ async def test_sync_first_goals_skips_failed_fixtures(monkeypatch):
 # ── SYNC PLAYERS (guard de arranque) ─────────────────────────────────────────
 
 
+async def _seed_full_coverage() -> None:
+    """Estado coherente y completo: cada selección con plantilla, reciente."""
+    async with TestSessionLocal() as session:
+        await session.execute(delete(Player))
+        await session.execute(delete(Team))
+        session.add(Team(api_team_id=1, name="Argentina"))
+        session.add(Player(api_player_id=10, name="L. Messi", team_api_id=1, team_name="Argentina"))
+        await session.commit()
+
+
 @pytest.mark.asyncio
 async def test_sync_players_startup_skips_when_fresh(monkeypatch):
-    """El sync de arranque se omite si las plantillas ya están frescas (conftest las
-    siembra) — no re-quema cuota de API en cada reinicio/redeploy."""
+    """El sync de arranque se omite si las plantillas están frescas y completas —
+    no re-quema cuota de API en cada reinicio/redeploy."""
     calls = {"n": 0}
     async def counting_fetch(team_api_id):
         calls["n"] += 1
         return []
     monkeypatch.setattr(football_api, "fetch_squad", counting_fetch)
+    await _seed_full_coverage()
 
     await scheduler_module.sync_players(skip_if_fresh=True)
-    assert calls["n"] == 0  # plantillas frescas → no consultó la API
+    assert calls["n"] == 0  # frescas y completas → no consultó la API
 
 
 @pytest.mark.asyncio
@@ -497,3 +526,23 @@ async def test_sync_players_startup_runs_when_empty(monkeypatch):
 
     await scheduler_module.sync_players(skip_if_fresh=True)
     assert calls["n"] >= 1  # sin plantillas frescas → sincroniza
+
+
+@pytest.mark.asyncio
+async def test_sync_players_startup_runs_on_partial_coverage(monkeypatch):
+    """Si un fallo parcial dejó una selección sin plantilla, el arranque NO se omite
+    (reintenta) aunque otras plantillas sean recientes."""
+    calls = {"n": 0}
+    async def counting_fetch(team_api_id):
+        calls["n"] += 1
+        return []
+    monkeypatch.setattr(football_api, "fetch_squad", counting_fetch)
+    async with TestSessionLocal() as session:
+        await session.execute(delete(Player))
+        await session.execute(delete(Team))
+        session.add_all([Team(api_team_id=1, name="Argentina"), Team(api_team_id=2, name="Brazil")])
+        session.add(Player(api_player_id=10, name="L. Messi", team_api_id=1, team_name="Argentina"))
+        await session.commit()  # Brazil sin plantilla → cobertura incompleta
+
+    await scheduler_module.sync_players(skip_if_fresh=True)
+    assert calls["n"] >= 1  # incompleto → sincroniza
