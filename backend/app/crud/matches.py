@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from app.models.match import Match, MatchPhase, MatchStatus
 from app.models.prediction import Prediction
+from app.crud._upsert import upsert_by_key
 
 
 def _as_utc(dt: datetime) -> datetime:
@@ -73,36 +74,24 @@ class MatchCRUD:
         return result.first() is not None
 
     async def upsert_many(self, db: AsyncSession, fixtures: list[dict]) -> int:
-        """
-        Inserta o actualiza partidos por api_fixture_id. Retorna cuántos se
-        procesaron. Idempotente: reejecutable sin duplicar.
+        """Inserta o actualiza partidos por api_fixture_id. Idempotente.
 
-        Carga los partidos existentes en UNA sola query y resuelve el upsert en
-        memoria (evita el patrón N+1 de un SELECT por fixture).
-        """
-        if not fixtures:
-            return 0
-
-        result = await db.execute(select(Match))
-        existing = {m.api_fixture_id: m for m in result.scalars().all()}
-
+        Si un partido ya FINISHED cambia de marcador (p. ej. el fallback de
+        finalización lo marcó FINISHED con un marcador no-final, o la API lo
+        corrige tarde) sus predicciones ya calculadas quedan con puntos obsoletos:
+        se marcan para recálculo (igual que sync_first_goals)."""
         rescored_ids: list[int] = []
-        for parsed in fixtures:
-            match = existing.get(parsed["api_fixture_id"])
-            if match:
-                # Un partido ya FINISHED cuyo marcador cambia (p. ej. el fallback de
-                # finalización lo marcó FINISHED con un marcador no-final, o la API lo
-                # corrige tarde) deja con puntos obsoletos a sus predicciones ya
-                # calculadas: se marcan para recálculo (igual que sync_first_goals).
-                if parsed["status"] == MatchStatus.FINISHED and (
-                    parsed["home_score"] != match.home_score
-                    or parsed["away_score"] != match.away_score
-                ):
-                    rescored_ids.append(match.id)
-                for key, value in parsed.items():
-                    setattr(match, key, value)
-            else:
-                db.add(Match(**parsed))
+
+        def _track_score_change(match: Match, parsed: dict) -> None:
+            if parsed["status"] == MatchStatus.FINISHED and (
+                parsed["home_score"] != match.home_score
+                or parsed["away_score"] != match.away_score
+            ):
+                rescored_ids.append(match.id)
+
+        count = await upsert_by_key(
+            db, Match, fixtures, "api_fixture_id", on_update=_track_score_change
+        )
 
         if rescored_ids:
             await db.execute(
@@ -113,8 +102,7 @@ class MatchCRUD:
                 )
                 .values(is_calculated=False, points_earned=0)
             )
-        await db.flush()
-        return len(fixtures)
+        return count
 
 
 match_crud = MatchCRUD()

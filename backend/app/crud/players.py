@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.player import Player
+from app.crud._upsert import upsert_by_key
 
 
 class PlayerCRUD:
@@ -31,18 +32,7 @@ class PlayerCRUD:
 
     async def upsert_many(self, db: AsyncSession, players: list[dict]) -> int:
         """Inserta o actualiza jugadores por `api_player_id`. Idempotente."""
-        result = await db.execute(select(Player))
-        existing = {p.api_player_id: p for p in result.scalars().all()}
-
-        for parsed in players:
-            player = existing.get(parsed["api_player_id"])
-            if player:
-                for key, value in parsed.items():
-                    setattr(player, key, value)
-            else:
-                db.add(Player(**parsed))
-        await db.flush()
-        return len(players)
+        return await upsert_by_key(db, Player, players, "api_player_id")
 
 
 player_crud = PlayerCRUD()
