@@ -12,11 +12,12 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from httpx import RequestError
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from app.models.match import Match, MatchPhase, MatchStatus
 from app.models.prediction import Prediction
 from app.models.user import User
+from app.models.player import Player
 from app.services import scheduler as scheduler_module
 from app.services import football_api
 from app.crud import match_crud
@@ -463,3 +464,36 @@ async def test_sync_first_goals_skips_failed_fixtures(monkeypatch):
         assert rows[8002].first_goal_team == "France"     # éxito procesado igual
         assert rows[8002].first_goal_player_id == 777
         assert rows[8002].first_goal_player == "Mbappé"
+
+
+# ── SYNC PLAYERS (guard de arranque) ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_sync_players_startup_skips_when_fresh(monkeypatch):
+    """El sync de arranque se omite si las plantillas ya están frescas (conftest las
+    siembra) — no re-quema cuota de API en cada reinicio/redeploy."""
+    calls = {"n": 0}
+    async def counting_fetch(team_api_id):
+        calls["n"] += 1
+        return []
+    monkeypatch.setattr(football_api, "fetch_squad", counting_fetch)
+
+    await scheduler_module.sync_players(skip_if_fresh=True)
+    assert calls["n"] == 0  # plantillas frescas → no consultó la API
+
+
+@pytest.mark.asyncio
+async def test_sync_players_startup_runs_when_empty(monkeypatch):
+    """Con plantillas vacías (primer arranque) el sync de arranque sí corre."""
+    calls = {"n": 0}
+    async def counting_fetch(team_api_id):
+        calls["n"] += 1
+        return []
+    monkeypatch.setattr(football_api, "fetch_squad", counting_fetch)
+    async with TestSessionLocal() as session:
+        await session.execute(delete(Player))  # vaciar plantillas (hay selecciones sembradas)
+        await session.commit()
+
+    await scheduler_module.sync_players(skip_if_fresh=True)
+    assert calls["n"] >= 1  # sin plantillas frescas → sincroniza

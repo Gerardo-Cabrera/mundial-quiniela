@@ -1,5 +1,6 @@
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.models.player import Player
 from app.crud._upsert import upsert_by_key
 
@@ -33,6 +34,11 @@ class PlayerCRUD:
     async def upsert_many(self, db: AsyncSession, players: list[dict]) -> int:
         """Inserta o actualiza jugadores por `api_player_id`. Idempotente."""
         return await upsert_by_key(db, Player, players, "api_player_id")
+
+    async def last_synced_at(self, db: AsyncSession) -> datetime | None:
+        """`max(updated_at)` de la tabla, o None si está vacía. Permite saltar el
+        sync de plantillas en el arranque si ya están frescas."""
+        return await db.scalar(select(func.max(Player.updated_at)))
 
 
 player_crud = PlayerCRUD()
