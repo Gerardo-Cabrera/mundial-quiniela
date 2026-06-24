@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.team import Team
+from app.crud._upsert import upsert_by_key
 
 
 class TeamCRUD:
@@ -15,22 +16,8 @@ class TeamCRUD:
         return [row[0] for row in result.all()]
 
     async def upsert_many(self, db: AsyncSession, teams: list[dict]) -> int:
-        """
-        Inserta o actualiza selecciones por api_team_id. Retorna cuántas se
-        procesaron. Idempotente: reejecutable sin duplicar.
-        """
-        result = await db.execute(select(Team))
-        existing = {t.api_team_id: t for t in result.scalars().all()}
-
-        for parsed in teams:
-            team = existing.get(parsed["api_team_id"])
-            if team:
-                for key, value in parsed.items():
-                    setattr(team, key, value)
-            else:
-                db.add(Team(**parsed))
-        await db.flush()
-        return len(teams)
+        """Inserta o actualiza selecciones por api_team_id. Idempotente."""
+        return await upsert_by_key(db, Team, teams, "api_team_id")
 
 
 team_crud = TeamCRUD()

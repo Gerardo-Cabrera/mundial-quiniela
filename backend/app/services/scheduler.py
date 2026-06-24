@@ -157,10 +157,28 @@ async def _do_sync_players():
     logger.info("Synced %d players.", count)
 
 
-async def sync_players():
-    """Sincroniza las plantillas (jugadores) de las selecciones desde
-    API-Football. Se ejecuta cada ~3 días (y al arrancar): las plantillas cambian
-    por lesiones o altas durante el torneo."""
+async def _players_are_fresh() -> bool:
+    """¿Se sincronizaron las plantillas hace menos de SYNC_PLAYERS_HOURS?"""
+    async with AsyncSessionLocal() as db:
+        last = await player_crud.last_synced_at(db)
+    if last is None:
+        return False
+    if last.tzinfo is None:  # SQLite devuelve naive; asumir UTC
+        last = last.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - last < timedelta(hours=settings.SYNC_PLAYERS_HOURS)
+
+
+async def sync_players(*, skip_if_fresh: bool = False):
+    """Sincroniza las plantillas (jugadores) de las selecciones desde API-Football.
+    Refresco periódico cada ~3 días (las plantillas cambian por lesiones/altas).
+
+    El disparo de **arranque** usa `skip_if_fresh=True`: si ya se sincronizaron hace
+    < SYNC_PLAYERS_HOURS se omite, para no re-quemar cuota de API (≈1 request por
+    selección) en cada reinicio/redeploy. El refresco periódico (sin el flag) corre
+    siempre, así la cadencia configurada no se altera."""
+    if skip_if_fresh and await _players_are_fresh():
+        logger.info("Players sync de arranque omitido: plantillas ya frescas.")
+        return
     logger.info("Starting players sync...")
     await _retry(_do_sync_players, "sync_players")
 
@@ -288,12 +306,16 @@ def start_scheduler():
     # (re-sync manual disponible vía POST /config/teams/sync). Las plantillas sí
     # cambian (lesiones, altas) → cada pocos días. Ambas antes que goles/puntos.
     scheduler.add_job(sync_teams,          DateTrigger(run_date=now),                               id="sync_teams",      replace_existing=True)
-    scheduler.add_job(sync_players,        IntervalTrigger(hours=settings.SYNC_PLAYERS_HOURS),      id="sync_players",    replace_existing=True, next_run_time=now + timedelta(seconds=10))
+    # Plantillas: el refresco periódico siempre corre (cadencia intacta); el sync de
+    # arranque es un one-shot que se OMITE si ya están frescas (no re-quema cuota en
+    # cada reinicio). Por eso el periódico arranca a un intervalo completo, no a los 10s.
+    scheduler.add_job(sync_players,        DateTrigger(run_date=now + timedelta(seconds=10)),       id="sync_players_startup", replace_existing=True, kwargs={"skip_if_fresh": True})
+    scheduler.add_job(sync_players,        IntervalTrigger(hours=settings.SYNC_PLAYERS_HOURS),      id="sync_players",    replace_existing=True, next_run_time=now + timedelta(hours=settings.SYNC_PLAYERS_HOURS))
     scheduler.add_job(sync_fixtures,       IntervalTrigger(minutes=settings.SYNC_FIXTURES_MINUTES), id="sync_fixtures",   replace_existing=True, next_run_time=now + timedelta(seconds=20))
     scheduler.add_job(sync_first_goals,         IntervalTrigger(hours=settings.SYNC_GOALS_HOURS),        id="sync_goals",      replace_existing=True, next_run_time=now + timedelta(seconds=50))
     scheduler.add_job(calculate_pending_points, IntervalTrigger(minutes=settings.CALC_POINTS_MINUTES),   id="calc_points",     replace_existing=True, next_run_time=now + timedelta(seconds=80))
     scheduler.start()
-    logger.info("Scheduler started with 5 jobs.")
+    logger.info("Scheduler started with 6 jobs.")
 
 
 def stop_scheduler():
