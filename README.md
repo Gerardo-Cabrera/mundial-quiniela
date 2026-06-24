@@ -114,8 +114,11 @@ docker compose -f docker-compose.prod.yml up -d --build
 ## Tests
 
 ```bash
-cd backend
-pytest
+# Backend (pytest, SQLite en memoria)
+cd backend && pytest
+
+# Frontend (vitest — lógica de dominio pura)
+cd frontend && npm run test
 ```
 
 ## Sistema de Puntuación
