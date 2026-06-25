@@ -38,17 +38,17 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
   const [firstGoalPlayerId, setFirstGoalPlayerId] = useState<string>(
     prediction?.first_goal_player_id != null ? String(prediction.first_goal_player_id) : "",
   );
+  // Un 0-0 no tiene primer gol: el backend rechaza esa combinación (422). Se oculta
+  // la sección y **no se consulta la plantilla** (la query se reactiva sola si el
+  // usuario sube el marcador). La selección previa se conserva en estado.
+  const isGoalless = homeScore === 0 && awayScore === 0;
+
   const { mutate: save, isPending, isSuccess, isError } = useSavePrediction();
-  const { data: players = [], isLoading: playersLoading } = useMatchPlayers(match.id);
+  const { data: players = [], isLoading: playersLoading } = useMatchPlayers(match.id, !isGoalless);
   const { t } = useTranslation();
 
   const homePlayers = players.filter((p) => p.team_name === match.home_team);
   const awayPlayers = players.filter((p) => p.team_name === match.away_team);
-
-  // Un 0-0 no tiene primer gol: el backend rechaza esa combinación (422), así que
-  // aquí se oculta el selector y nunca se envía goleador (sin romper la selección
-  // previa por si el usuario vuelve a subir el marcador).
-  const isGoalless = homeScore === 0 && awayScore === 0;
 
   const handleSave = () => {
     save({
