@@ -97,43 +97,41 @@ export function PredictionModal({ match, prediction, onClose }: Props) {
           </div>
         </div>
 
-        {/* First goal scorer */}
-        <div className="mb-6">
-          <label className="block text-xs text-ucl-silver/70 mb-2 font-mono uppercase tracking-wider">
-            ⚽ {t("predictionModal.firstScorerLabel")}
-          </label>
-          {isGoalless ? (
-            <p className="text-xs text-ucl-silver/50 italic">
-              {t("predictionModal.goallessNoScorer")}
-            </p>
-          ) : playersLoading ? (
-            <div className="input-base w-full flex items-center gap-2 text-ucl-silver/60">
-              <Spinner size="sm" /> {t("predictionModal.loadingSquads")}
-            </div>
-          ) : players.length === 0 ? (
-            <p className="text-xs text-ucl-silver/50 italic">
-              {t("predictionModal.squadsUnavailable")}
-            </p>
-          ) : (
-            <select
-              value={firstGoalPlayerId}
-              onChange={(e) => setFirstGoalPlayerId(e.target.value)}
-              className="input-base w-full"
-            >
-              <option value="">{t("predictionModal.noPrediction")}</option>
-              <optgroup label={match.home_team}>
-                {homePlayers.map((p) => (
-                  <option key={p.api_player_id} value={p.api_player_id}>{p.name}</option>
-                ))}
-              </optgroup>
-              <optgroup label={match.away_team}>
-                {awayPlayers.map((p) => (
-                  <option key={p.api_player_id} value={p.api_player_id}>{p.name}</option>
-                ))}
-              </optgroup>
-            </select>
-          )}
-        </div>
+        {/* Primer goleador oculto en un 0-0. */}
+        {!isGoalless && (
+          <div className="mb-6">
+            <label className="block text-xs text-ucl-silver/70 mb-2 font-mono uppercase tracking-wider">
+              ⚽ {t("predictionModal.firstScorerLabel")}
+            </label>
+            {playersLoading ? (
+              <div className="input-base w-full flex items-center gap-2 text-ucl-silver/60">
+                <Spinner size="sm" /> {t("predictionModal.loadingSquads")}
+              </div>
+            ) : players.length === 0 ? (
+              <p className="text-xs text-ucl-silver/50 italic">
+                {t("predictionModal.squadsUnavailable")}
+              </p>
+            ) : (
+              <select
+                value={firstGoalPlayerId}
+                onChange={(e) => setFirstGoalPlayerId(e.target.value)}
+                className="input-base w-full"
+              >
+                <option value="">{t("predictionModal.noPrediction")}</option>
+                <optgroup label={match.home_team}>
+                  {homePlayers.map((p) => (
+                    <option key={p.api_player_id} value={p.api_player_id}>{p.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label={match.away_team}>
+                  {awayPlayers.map((p) => (
+                    <option key={p.api_player_id} value={p.api_player_id}>{p.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            )}
+          </div>
+        )}
 
         {/* Submit */}
         <button

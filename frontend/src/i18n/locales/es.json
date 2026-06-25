@@ -82,7 +82,6 @@
     "loadingSquads": "Cargando plantillas...",
     "squadsUnavailable": "Plantillas no disponibles todavía (se sincronizan desde API-Football).",
     "noPrediction": "— Sin pronóstico —",
-    "goallessNoScorer": "Un marcador 0-0 no lleva primer goleador.",
     "saving": "Guardando...",
     "saved": "✓ Guardado",
     "save": "Guardar Pronóstico",
