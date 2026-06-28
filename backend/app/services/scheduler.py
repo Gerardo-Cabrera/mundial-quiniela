@@ -37,21 +37,16 @@ scheduler = AsyncIOScheduler(
 # Un fallo no lo avanza, para reintentar pronto en lugar de quedarse con datos viejos.
 _last_fixtures_fetch: datetime | None = None
 
-# ¿La última corrida de sync_fixtures detectó algún partido que ACABA de finalizar?
-# Lo escribe `_do_sync_fixtures` y lo lee `sync_fixtures` para disparar el pipeline
-# event-driven (primer gol + puntos) solo en la transición a FINISHED.
-_fixtures_newly_finished: bool = False
 
-
-async def _retry(coro_func, job_name: str) -> bool:
-    """Ejecuta una coroutine con reintentos. Devuelve True si tuvo éxito y False si
-    agotó los reintentos (los jobs que no necesitan el resultado lo ignoran)."""
+async def _retry(coro_func, job_name: str) -> tuple[bool, object]:
+    """Ejecuta una coroutine con reintentos. Devuelve `(ok, resultado)`: `ok=True` y el
+    valor que retornó la coroutine si tuvo éxito, o `(False, None)` si agotó los
+    reintentos. Los jobs que no necesitan el resultado ignoran la tupla."""
     max_retries = settings.JOB_MAX_RETRIES
     retry_delay = settings.JOB_RETRY_DELAY_SECONDS
     for attempt in range(1, max_retries + 1):
         try:
-            await coro_func()
-            return True
+            return True, await coro_func()
         except (HTTPStatusError, RequestError) as e:
             logger.warning(
                 "Job %s attempt %d/%d failed (network): %s",
@@ -71,21 +66,22 @@ async def _retry(coro_func, job_name: str) -> bool:
         if attempt < max_retries:
             await asyncio.sleep(retry_delay * attempt)
     logger.error("Job %s failed after %d retries.", job_name, max_retries)
-    return False
+    return False, None
 
 
-async def _do_sync_fixtures():
-    global _fixtures_newly_finished
-    _fixtures_newly_finished = False
+async def _do_sync_fixtures() -> list[int]:
+    """Trae y hace upsert de los fixtures. Devuelve los ids de partidos que ACABAN de
+    pasar a FINISHED (para que `sync_fixtures` dispare el pipeline post-FT con una
+    variable local, sin estado global compartido entre corridas)."""
     fixtures = await football_api.fetch_fixtures()
     parsed = [football_api.parse_fixture(f) for f in fixtures]
     async with AsyncSessionLocal() as db:
         count, newly_finished_ids = await match_crud.upsert_many(db, parsed)
         await db.commit()
-    _fixtures_newly_finished = bool(newly_finished_ids)
     logger.info(
         "Synced %d fixtures (%d recién finalizados).", count, len(newly_finished_ids)
     )
+    return newly_finished_ids
 
 
 async def sync_fixtures():
@@ -114,7 +110,8 @@ async def sync_fixtures():
     if not (in_play or idle_due):
         return
     logger.info("Starting fixture sync...")
-    if await _retry(_do_sync_fixtures, "sync_fixtures"):
+    ok, newly_finished_ids = await _retry(_do_sync_fixtures, "sync_fixtures")
+    if ok:
         # Solo avanza el reloj de pacing si el fetch tuvo éxito: tras un fallo de
         # red/API, idle_due sigue activo y se reintenta en la próxima corrida en
         # vez de esperar SYNC_FIXTURES_IDLE_MINUTES con datos viejos.
@@ -124,7 +121,7 @@ async def sync_fixtures():
         # timer horario ni al FT). Barato: la query salta los que ya lo tienen (~1
         # request por partido).
         await _retry(_do_sync_first_goals, "sync_first_goals")
-        if _fixtures_newly_finished:
+        if newly_finished_ids:
             # Recién finalizado: puntuar ya, sin esperar al timer de 30 min.
             logger.info("Partido(s) recién finalizado(s): puntuando tras el FT.")
             await _retry(_do_calculate_points, "calculate_pending_points")
