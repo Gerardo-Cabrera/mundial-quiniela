@@ -68,12 +68,6 @@ def _raw_fixture(
     }
 
 
-@pytest.fixture(autouse=True)
-def _use_test_db(monkeypatch):
-    """Los jobs usan AsyncSessionLocal directamente: apuntarlos a la BD de test."""
-    monkeypatch.setattr(scheduler_module, "AsyncSessionLocal", TestSessionLocal)
-
-
 async def _seed(
     *,
     home_score: int = 2,

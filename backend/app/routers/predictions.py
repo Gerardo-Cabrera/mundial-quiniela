@@ -4,12 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
-from app.models.match import Match
+from app.models.match import Match, MatchStatus
 from app.models.prediction import Prediction
 from app.models.user import User
 from app.schemas import PredictionCreate, PredictionOut, PredictionBackfillRequest
 from app.core.deps import get_current_user, get_admin_user
 from app.crud import prediction_crud, match_crud, user_crud, player_crud
+from app.services.scheduler import sync_first_goals, calculate_pending_points
 
 router = APIRouter(prefix="/predictions", tags=["Predictions"])
 
@@ -108,19 +109,25 @@ async def backfill_predictions(
     Carga los pronósticos de un participante para partidos que ya comenzaron o
     finalizaron (el torneo arrancó el 11/06 y los pronósticos se hicieron antes
     del kickoff). A diferencia del endpoint normal, NO aplica la validación de
-    fecha: por eso es exclusivo de admin. Las predicciones quedan sin calcular
-    (is_calculated=False) para que el job de puntuación las procese.
-    Crea o actualiza por (usuario, partido); idempotente.
+    fecha: por eso es exclusivo de admin. Crea o actualiza por (usuario, partido);
+    idempotente.
+
+    Si alguno de los partidos **ya finalizó**, dispara el mismo pipeline del
+    scheduler (resolver el **primer gol** real + **calcular puntos**) para puntuar
+    al instante, sin esperar al timer de respaldo de 30 min.
     """
     user = await user_crud.get_by_team(db, data.team_name)
     if not user:
         raise HTTPException(status_code=404, detail=f"Participante '{data.team_name}' no encontrado.")
 
     saved: list[Prediction] = []
+    any_finished = False
     for item in data.predictions:
         match = await match_crud.get_by_id(db, item.match_id)
         if not match:
             raise HTTPException(status_code=404, detail=f"Partido {item.match_id} no encontrado.")
+        if match.status == MatchStatus.FINISHED:
+            any_finished = True
         fg_player_id, fg_player_name = await _validate_first_goal_player(
             db, match, item.first_goal_player_id
         )
@@ -135,4 +142,17 @@ async def backfill_predictions(
             first_goal_player=fg_player_name,
         )
         saved.append(prediction)
+
+    if any_finished:
+        # Los jobs abren su propia sesión y solo ven lo confirmado: commit antes.
+        await db.commit()
+        # Mismo orden que el pipeline del scheduler: primer gol → puntos. Ambos
+        # van envueltos en _retry (toleran fallos de red; los timers son respaldo).
+        await sync_first_goals()
+        await calculate_pending_points()
+        # Refrescar para devolver el estado ya puntuado (los jobs escribieron en
+        # otra sesión): puntos/cálculo de la predicción y primer gol real del partido.
+        for pred in saved:
+            await db.refresh(pred)
+            await db.refresh(pred.match)
     return saved

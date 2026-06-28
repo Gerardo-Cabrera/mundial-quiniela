@@ -10,7 +10,9 @@ from httpx import AsyncClient
 
 from app.config import settings
 from app.models.match import Match, MatchPhase, MatchStatus
+from app.services import football_api
 from tests.conftest import TestSessionLocal
+from tests.test_scheduler import _returns, _goal_event
 
 
 # ── AUTH ENDPOINTS ────────────────────────────────────────────────────────────
@@ -441,6 +443,38 @@ async def test_backfill_loads_prediction_for_finished_match(admin_client: AsyncC
     mine = (await admin_client.get("/api/predictions/")).json()
     assert len(mine) == 1
     assert mine[0]["predicted_home"] == 3
+
+
+@pytest.mark.asyncio
+async def test_backfill_finished_match_triggers_scoring(admin_client: AsyncClient, monkeypatch):
+    """Si el partido ya finalizó, el backfill dispara el pipeline (primer gol +
+    puntos) y devuelve la predicción YA calculada, sin esperar al timer de respaldo."""
+    match_id = await _create_match(
+        status=MatchStatus.FINISHED,
+        home_score=2,
+        away_score=1,
+        match_date=datetime.now(timezone.utc) - timedelta(hours=2),
+    )
+    # El job de primer gol consulta eventos: simular que la API devuelve el gol de Messi.
+    monkeypatch.setattr(
+        football_api, "fetch_fixture_events",
+        _returns([_goal_event(10, "L. Messi", "Argentina")]),
+    )
+    resp = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{
+            "match_id": match_id,
+            "predicted_home": 2,
+            "predicted_away": 1,
+            "first_goal_player_id": 10,
+        }],
+    })
+    assert resp.status_code == 201
+    pred = resp.json()[0]
+    assert pred["is_calculated"] is True
+    # Exacto (8) + victoria (5) + primer goleador (3) en fase de grupos = 16.
+    assert pred["points_earned"] == 16
+    assert pred["match"]["first_goal_player"] == "L. Messi"
 
 
 @pytest.mark.asyncio
