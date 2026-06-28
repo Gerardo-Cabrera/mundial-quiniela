@@ -456,8 +456,9 @@ async def test_sync_fixtures_skips_when_nothing_pending(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_sync_fixtures_fetches_in_finish_window(monkeypatch):
-    """Consulta la API si hay un partido que pudo terminar, aunque acabe de sincronizar."""
+async def test_sync_fixtures_fetches_while_match_in_play(monkeypatch):
+    """Consulta la API mientras haya un partido EN JUEGO (kickoff pasado, aún en vivo),
+    aunque acabe de sincronizar → near-real-time durante el partido."""
     calls = {"n": 0}
     async def counting_fetch(*a, **k):
         calls["n"] += 1
@@ -467,7 +468,7 @@ async def test_sync_fixtures_fetches_in_finish_window(monkeypatch):
     async with TestSessionLocal() as session:
         session.add(Match(api_fixture_id=8006, home_team="A", away_team="B",
                           phase=MatchPhase.GROUP_STAGE, status=MatchStatus.LIVE,
-                          match_date=datetime.now(timezone.utc) - timedelta(minutes=150)))
+                          match_date=datetime.now(timezone.utc) - timedelta(minutes=30)))
         await session.commit()
     await scheduler_module.sync_fixtures()
     assert calls["n"] == 1

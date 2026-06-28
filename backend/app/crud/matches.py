@@ -58,9 +58,9 @@ class MatchCRUD:
     async def has_match_pending_finish(self, db: AsyncSession, *, before: datetime) -> bool:
         """¿Hay algún partido SCHEDULED/LIVE cuyo kickoff fue antes de `before`?
 
-        Es decir, un partido que ya pudo haber terminado y aún no está FINISHED.
-        Define la "ventana de finalización": mientras devuelva True conviene consultar
-        la API seguido para captar el `FT` a tiempo. Excluye FINISHED y POSTPONED para
+        Con `before=now` significa "hay un partido EN JUEGO" (kickoff pasado y aún sin
+        FINISHED): mientras devuelva True conviene consultar la API seguido para reflejar
+        marcador / primer gol / FT casi en tiempo real. Excluye FINISHED y POSTPONED para
         no consultar indefinidamente.
         """
         result = await db.execute(

@@ -90,10 +90,10 @@ async def _do_sync_fixtures():
 
 async def sync_fixtures():
     """Sincroniza fixtures, pero **solo cuando aporta** (sync adaptativo): consulta a
-    la API seguido mientras haya un partido que pudo terminar (pasados
-    MATCH_MIN_DURATION_MINUTES del kickoff y aún sin FINISHED), y de forma espaciada
-    (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo. Evita consultar a ciegas un
-    partido en sus primeros minutos, cuando todavía no puede haber terminado.
+    la API cada SYNC_FIXTURES_MINUTES mientras haya un partido EN JUEGO (kickoff pasado
+    y aún sin FINISHED) → marcador, primer gol y FT casi en tiempo real; y de forma
+    espaciada (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo para captar kickoffs y
+    fixtures nuevos. Fuera de los partidos no malgasta cuota.
 
     Pipeline near-real-time: tras cada corrida con éxito resuelve el **primer gol**
     (de partidos en vivo o recién finalizados → el goleador aparece ya en pleno
@@ -104,14 +104,14 @@ async def sync_fixtures():
     global _last_fixtures_fetch
     now = datetime.now(timezone.utc)
     async with AsyncSessionLocal() as db:
-        near_finish = await match_crud.has_match_pending_finish(
-            db, before=now - timedelta(minutes=settings.MATCH_MIN_DURATION_MINUTES)
-        )
+        # En juego = kickoff ya pasado y aún sin FINISHED (incluye un SCHEDULED cuyo
+        # horario llegó → detecta el saque pronto). Mientras dure, se consulta seguido.
+        in_play = await match_crud.has_match_pending_finish(db, before=now)
     idle_due = (
         _last_fixtures_fetch is None
         or now - _last_fixtures_fetch >= timedelta(minutes=settings.SYNC_FIXTURES_IDLE_MINUTES)
     )
-    if not (near_finish or idle_due):
+    if not (in_play or idle_due):
         return
     logger.info("Starting fixture sync...")
     if await _retry(_do_sync_fixtures, "sync_fixtures"):
