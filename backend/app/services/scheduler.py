@@ -95,11 +95,12 @@ async def sync_fixtures():
     (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo. Evita consultar a ciegas un
     partido en sus primeros minutos, cuando todavía no puede haber terminado.
 
-    Pipeline event-driven: si la corrida detecta un partido que ACABA de finalizar,
-    encadena de inmediato el primer gol y el cálculo de puntos (near-real-time tras
-    el FT) en vez de esperar a los timers horario/30-min. Solo dispara en la
-    transición a FINISHED → no consume cuota extra; los timers periódicos siguen como
-    red de seguridad para los casos en que la API tarda en publicar los eventos."""
+    Pipeline near-real-time: tras cada corrida con éxito resuelve el **primer gol**
+    (de partidos en vivo o recién finalizados → el goleador aparece ya en pleno
+    partido, a la cadencia del sync) y, si algún partido ACABA de finalizar, **puntúa
+    de inmediato** sin esperar al timer de 30 min. Coste acotado (la query del primer
+    gol salta los ya resueltos, ~1 request/partido); los timers periódicos siguen como
+    red de seguridad para cuando la API tarda en publicar los eventos."""
     global _last_fixtures_fetch
     now = datetime.now(timezone.utc)
     async with AsyncSessionLocal() as db:
@@ -118,9 +119,14 @@ async def sync_fixtures():
         # red/API, idle_due sigue activo y se reintenta en la próxima corrida en
         # vez de esperar SYNC_FIXTURES_IDLE_MINUTES con datos viejos.
         _last_fixtures_fetch = now
+        # Resolver el primer gol en cada corrida con éxito: un partido EN VIVO que
+        # acaba de marcar obtiene su goleador a la cadencia del sync (no espera al
+        # timer horario ni al FT). Barato: la query salta los que ya lo tienen (~1
+        # request por partido).
+        await _retry(_do_sync_first_goals, "sync_first_goals")
         if _fixtures_newly_finished:
-            logger.info("Partido(s) recién finalizado(s): ejecutando pipeline post-FT.")
-            await _retry(_do_sync_first_goals, "sync_first_goals")
+            # Recién finalizado: puntuar ya, sin esperar al timer de 30 min.
+            logger.info("Partido(s) recién finalizado(s): puntuando tras el FT.")
             await _retry(_do_calculate_points, "calculate_pending_points")
 
 
@@ -211,7 +217,11 @@ async def _do_sync_first_goals():
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Match).where(
-                Match.status == MatchStatus.FINISHED,
+                # En vivo o finalizado: el primer gol es definitivo en cuanto se
+                # anota, así que se resuelve ya en pleno partido (no se espera al FT).
+                # Coste acotado: la condición `first_goal_team IS NULL` hace que cada
+                # partido se consulte ~1 vez (al resolverse deja de aparecer).
+                Match.status.in_([MatchStatus.LIVE, MatchStatus.FINISHED]),
                 Match.first_goal_team.is_(None),
                 Match.home_score.is_not(None),
                 Match.away_score.is_not(None),

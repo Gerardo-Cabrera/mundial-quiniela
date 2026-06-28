@@ -330,6 +330,31 @@ async def _first_prediction_id() -> int:
         return (await session.execute(select(Prediction.id))).scalars().first()
 
 
+@pytest.mark.asyncio
+async def test_sync_first_goals_resolves_live_match(monkeypatch):
+    """El primer gol se resuelve también en partidos EN VIVO (no solo finalizados):
+    aparece en pleno partido, sin esperar al FT."""
+    async with TestSessionLocal() as session:
+        session.add(Match(
+            api_fixture_id=9400, home_team="Argentina", away_team="Brazil",
+            home_score=1, away_score=0, status=MatchStatus.LIVE,
+            phase=MatchPhase.GROUP_STAGE,
+            match_date=datetime.now(timezone.utc) - timedelta(minutes=20),
+        ))
+        await session.commit()
+    monkeypatch.setattr(football_api, "fetch_fixture_events",
+                        _returns([_goal_event(SCORER_ID, "Messi", "Argentina", elapsed=12)]))
+
+    await scheduler_module._do_sync_first_goals()
+
+    async with TestSessionLocal() as session:
+        m = (await session.execute(
+            select(Match).where(Match.api_fixture_id == 9400)
+        )).scalars().first()
+    assert m.first_goal_player_id == SCORER_ID
+    assert m.first_goal_team == "Argentina"
+
+
 async def _seed_calculated(points: int) -> int:
     """Predicción ya puntuada de un partido FINISHED (api_fixture_id=5001)."""
     pred_id = await _seed(
