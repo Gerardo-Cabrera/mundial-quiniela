@@ -73,24 +73,39 @@ class MatchCRUD:
         )
         return result.first() is not None
 
-    async def upsert_many(self, db: AsyncSession, fixtures: list[dict]) -> int:
+    async def upsert_many(
+        self, db: AsyncSession, fixtures: list[dict]
+    ) -> tuple[int, list[int]]:
         """Inserta o actualiza partidos por api_fixture_id. Idempotente.
+
+        Devuelve `(procesados, recien_finalizados)`: el segundo es la lista de ids
+        de partidos que ACABAN de transicionar a FINISHED en este lote (estaban
+        SCHEDULED/LIVE y ahora están FINISHED). El scheduler la usa para encadenar
+        de inmediato el primer gol y el cálculo de puntos (pipeline near-real-time),
+        sin esperar a los timers periódicos. Solo se detectan transiciones en
+        UPDATES (un partido ya existente); un fixture insertado directo como FINISHED
+        lo cubren los jobs de arranque.
 
         Si un partido ya FINISHED cambia de marcador (p. ej. el fallback de
         finalización lo marcó FINISHED con un marcador no-final, o la API lo
         corrige tarde) sus predicciones ya calculadas quedan con puntos obsoletos:
         se marcan para recálculo (igual que sync_first_goals)."""
         rescored_ids: list[int] = []
+        newly_finished_ids: list[int] = []
 
-        def _track_score_change(match: Match, parsed: dict) -> None:
-            if parsed["status"] == MatchStatus.FINISHED and (
+        def _track_status_and_score(match: Match, parsed: dict) -> None:
+            if parsed["status"] != MatchStatus.FINISHED:
+                return
+            if match.status != MatchStatus.FINISHED:
+                newly_finished_ids.append(match.id)
+            if (
                 parsed["home_score"] != match.home_score
                 or parsed["away_score"] != match.away_score
             ):
                 rescored_ids.append(match.id)
 
         count = await upsert_by_key(
-            db, Match, fixtures, "api_fixture_id", on_update=_track_score_change
+            db, Match, fixtures, "api_fixture_id", on_update=_track_status_and_score
         )
 
         if rescored_ids:
@@ -102,7 +117,7 @@ class MatchCRUD:
                 )
                 .values(is_calculated=False, points_earned=0)
             )
-        return count
+        return count, newly_finished_ids
 
 
 match_crud = MatchCRUD()

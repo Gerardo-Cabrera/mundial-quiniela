@@ -37,6 +37,11 @@ scheduler = AsyncIOScheduler(
 # Un fallo no lo avanza, para reintentar pronto en lugar de quedarse con datos viejos.
 _last_fixtures_fetch: datetime | None = None
 
+# ¿La última corrida de sync_fixtures detectó algún partido que ACABA de finalizar?
+# Lo escribe `_do_sync_fixtures` y lo lee `sync_fixtures` para disparar el pipeline
+# event-driven (primer gol + puntos) solo en la transición a FINISHED.
+_fixtures_newly_finished: bool = False
+
 
 async def _retry(coro_func, job_name: str) -> bool:
     """Ejecuta una coroutine con reintentos. Devuelve True si tuvo éxito y False si
@@ -70,12 +75,17 @@ async def _retry(coro_func, job_name: str) -> bool:
 
 
 async def _do_sync_fixtures():
+    global _fixtures_newly_finished
+    _fixtures_newly_finished = False
     fixtures = await football_api.fetch_fixtures()
     parsed = [football_api.parse_fixture(f) for f in fixtures]
     async with AsyncSessionLocal() as db:
-        count = await match_crud.upsert_many(db, parsed)
+        count, newly_finished_ids = await match_crud.upsert_many(db, parsed)
         await db.commit()
-    logger.info("Synced %d fixtures.", count)
+    _fixtures_newly_finished = bool(newly_finished_ids)
+    logger.info(
+        "Synced %d fixtures (%d recién finalizados).", count, len(newly_finished_ids)
+    )
 
 
 async def sync_fixtures():
@@ -83,7 +93,13 @@ async def sync_fixtures():
     la API seguido mientras haya un partido que pudo terminar (pasados
     MATCH_MIN_DURATION_MINUTES del kickoff y aún sin FINISHED), y de forma espaciada
     (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo. Evita consultar a ciegas un
-    partido en sus primeros minutos, cuando todavía no puede haber terminado."""
+    partido en sus primeros minutos, cuando todavía no puede haber terminado.
+
+    Pipeline event-driven: si la corrida detecta un partido que ACABA de finalizar,
+    encadena de inmediato el primer gol y el cálculo de puntos (near-real-time tras
+    el FT) en vez de esperar a los timers horario/30-min. Solo dispara en la
+    transición a FINISHED → no consume cuota extra; los timers periódicos siguen como
+    red de seguridad para los casos en que la API tarda en publicar los eventos."""
     global _last_fixtures_fetch
     now = datetime.now(timezone.utc)
     async with AsyncSessionLocal() as db:
@@ -102,6 +118,10 @@ async def sync_fixtures():
         # red/API, idle_due sigue activo y se reintenta en la próxima corrida en
         # vez de esperar SYNC_FIXTURES_IDLE_MINUTES con datos viejos.
         _last_fixtures_fetch = now
+        if _fixtures_newly_finished:
+            logger.info("Partido(s) recién finalizado(s): ejecutando pipeline post-FT.")
+            await _retry(_do_sync_first_goals, "sync_first_goals")
+            await _retry(_do_calculate_points, "calculate_pending_points")
 
 
 async def _do_sync_teams():
