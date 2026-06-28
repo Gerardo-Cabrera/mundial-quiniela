@@ -38,15 +38,14 @@ class Settings(BaseSettings):
     # (Las selecciones no llevan intervalo: se sincronizan una sola vez al
     # arrancar porque no cambian durante el torneo.)
     SYNC_PLAYERS_HOURS: int = 72  # plantillas: cada ~3 días (cambian por lesiones, altas)
-    # Sync de fixtures ADAPTATIVO: no consulta a la API a ciegas. Consulta seguido
-    # (cada SYNC_FIXTURES_MINUTES) SOLO cuando un partido podría estar terminando
-    # —pasados MATCH_MIN_DURATION_MINUTES del kickoff y aún sin FINISHED—, y de forma
-    # espaciada (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo (para captar kickoffs,
-    # marcadores y fixtures nuevos). Así no se gasta cuota consultando un partido en su
-    # minuto 3, 6, 9... cuando todavía no puede haber terminado.
-    SYNC_FIXTURES_MINUTES: int = 3        # cadencia mientras un partido está en ventana de finalización
-    SYNC_FIXTURES_IDLE_MINUTES: int = 30  # cadencia de respaldo cuando no hay partidos por terminar
-    MATCH_MIN_DURATION_MINUTES: int = 110  # antes de esto un partido no puede haber terminado
+    # Sync de fixtures ADAPTATIVO: consulta seguido (cada SYNC_FIXTURES_MINUTES) SOLO
+    # mientras haya un partido EN JUEGO (kickoff pasado y aún sin FINISHED) → marcador,
+    # primer gol y FT casi en tiempo real; el resto del tiempo, de respaldo cada
+    # SYNC_FIXTURES_IDLE_MINUTES (para captar kickoffs y fixtures nuevos). El primer gol se
+    # resuelve por partido UNA sola vez (al obtenerlo deja de consultarse), así el coste se
+    # mantiene holgado.
+    SYNC_FIXTURES_MINUTES: int = 1        # cadencia mientras hay un partido en juego (near-real-time)
+    SYNC_FIXTURES_IDLE_MINUTES: int = 30  # cadencia de respaldo cuando no hay partidos en juego
     SYNC_GOALS_HOURS: int = 1
     CALC_POINTS_MINUTES: int = 30
     JOB_MAX_RETRIES: int = 3
@@ -70,8 +69,8 @@ class Settings(BaseSettings):
     # fuerza bruta de credenciales sin molestar al uso legítimo.
     RATE_LIMIT_AUTH: str = "10/minute"
     # Endpoints admin de sync manual: cada llamada consume cuota de API-Football
-    # (plan Free: 100 req/día). Tope holgado para re-syncs legítimos que frena
-    # clics/scripts en ráfaga que agotarían la cuota.
+    # Tope holgado para re-syncs legítimos que frena clics/scripts en ráfaga que 
+    # agotarían la cuota.
     RATE_LIMIT_SYNC: str = "10/hour"
 
     # Scoring: si tras este plazo la API no entrega el primer gol de un partido

@@ -70,5 +70,5 @@ export const useLeaderboard = () =>
   useQuery({
     queryKey: ["leaderboard"],
     queryFn:  leaderboardApi.get,
-    refetchInterval: 60_000, // refresca cada minuto (los puntos cambian cada 30 min en backend)
+    refetchInterval: 60_000, // refresca cada minuto (el backend puntúa al instante tras el FT; el timer de 30 min es respaldo)
   });

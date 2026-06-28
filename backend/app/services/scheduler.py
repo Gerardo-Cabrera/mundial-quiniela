@@ -38,15 +38,15 @@ scheduler = AsyncIOScheduler(
 _last_fixtures_fetch: datetime | None = None
 
 
-async def _retry(coro_func, job_name: str) -> bool:
-    """Ejecuta una coroutine con reintentos. Devuelve True si tuvo éxito y False si
-    agotó los reintentos (los jobs que no necesitan el resultado lo ignoran)."""
+async def _retry(coro_func, job_name: str) -> tuple[bool, object]:
+    """Ejecuta una coroutine con reintentos. Devuelve `(ok, resultado)`: `ok=True` y el
+    valor que retornó la coroutine si tuvo éxito, o `(False, None)` si agotó los
+    reintentos. Los jobs que no necesitan el resultado ignoran la tupla."""
     max_retries = settings.JOB_MAX_RETRIES
     retry_delay = settings.JOB_RETRY_DELAY_SECONDS
     for attempt in range(1, max_retries + 1):
         try:
-            await coro_func()
-            return True
+            return True, await coro_func()
         except (HTTPStatusError, RequestError) as e:
             logger.warning(
                 "Job %s attempt %d/%d failed (network): %s",
@@ -66,42 +66,65 @@ async def _retry(coro_func, job_name: str) -> bool:
         if attempt < max_retries:
             await asyncio.sleep(retry_delay * attempt)
     logger.error("Job %s failed after %d retries.", job_name, max_retries)
-    return False
+    return False, None
 
 
-async def _do_sync_fixtures():
+async def _do_sync_fixtures() -> list[int]:
+    """Trae y hace upsert de los fixtures. Devuelve los ids de partidos que ACABAN de
+    pasar a FINISHED (para que `sync_fixtures` dispare el pipeline post-FT con una
+    variable local, sin estado global compartido entre corridas)."""
     fixtures = await football_api.fetch_fixtures()
     parsed = [football_api.parse_fixture(f) for f in fixtures]
     async with AsyncSessionLocal() as db:
-        count = await match_crud.upsert_many(db, parsed)
+        count, newly_finished_ids = await match_crud.upsert_many(db, parsed)
         await db.commit()
-    logger.info("Synced %d fixtures.", count)
+    logger.info(
+        "Synced %d fixtures (%d recién finalizados).", count, len(newly_finished_ids)
+    )
+    return newly_finished_ids
 
 
 async def sync_fixtures():
     """Sincroniza fixtures, pero **solo cuando aporta** (sync adaptativo): consulta a
-    la API seguido mientras haya un partido que pudo terminar (pasados
-    MATCH_MIN_DURATION_MINUTES del kickoff y aún sin FINISHED), y de forma espaciada
-    (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo. Evita consultar a ciegas un
-    partido en sus primeros minutos, cuando todavía no puede haber terminado."""
+    la API cada SYNC_FIXTURES_MINUTES mientras haya un partido EN JUEGO (kickoff pasado
+    y aún sin FINISHED) → marcador, primer gol y FT casi en tiempo real; y de forma
+    espaciada (SYNC_FIXTURES_IDLE_MINUTES) el resto del tiempo para captar kickoffs y
+    fixtures nuevos. Fuera de los partidos no malgasta cuota.
+
+    Pipeline near-real-time: tras cada corrida con éxito resuelve el **primer gol**
+    (de partidos en vivo o recién finalizados → el goleador aparece ya en pleno
+    partido, a la cadencia del sync) y, si algún partido ACABA de finalizar, **puntúa
+    de inmediato** sin esperar al timer de 30 min. Coste acotado (la query del primer
+    gol salta los ya resueltos, ~1 request/partido); los timers periódicos siguen como
+    red de seguridad para cuando la API tarda en publicar los eventos."""
     global _last_fixtures_fetch
     now = datetime.now(timezone.utc)
     async with AsyncSessionLocal() as db:
-        near_finish = await match_crud.has_match_pending_finish(
-            db, before=now - timedelta(minutes=settings.MATCH_MIN_DURATION_MINUTES)
-        )
+        # En juego = kickoff ya pasado y aún sin FINISHED (incluye un SCHEDULED cuyo
+        # horario llegó → detecta el saque pronto). Mientras dure, se consulta seguido.
+        in_play = await match_crud.has_match_pending_finish(db, before=now)
     idle_due = (
         _last_fixtures_fetch is None
         or now - _last_fixtures_fetch >= timedelta(minutes=settings.SYNC_FIXTURES_IDLE_MINUTES)
     )
-    if not (near_finish or idle_due):
+    if not (in_play or idle_due):
         return
     logger.info("Starting fixture sync...")
-    if await _retry(_do_sync_fixtures, "sync_fixtures"):
+    ok, newly_finished_ids = await _retry(_do_sync_fixtures, "sync_fixtures")
+    if ok:
         # Solo avanza el reloj de pacing si el fetch tuvo éxito: tras un fallo de
         # red/API, idle_due sigue activo y se reintenta en la próxima corrida en
         # vez de esperar SYNC_FIXTURES_IDLE_MINUTES con datos viejos.
         _last_fixtures_fetch = now
+        # Resolver el primer gol en cada corrida con éxito: un partido EN VIVO que
+        # acaba de marcar obtiene su goleador a la cadencia del sync (no espera al
+        # timer horario ni al FT). Barato: la query salta los que ya lo tienen (~1
+        # request por partido).
+        await _retry(_do_sync_first_goals, "sync_first_goals")
+        if newly_finished_ids:
+            # Recién finalizado: puntuar ya, sin esperar al timer de 30 min.
+            logger.info("Partido(s) recién finalizado(s): puntuando tras el FT.")
+            await _retry(_do_calculate_points, "calculate_pending_points")
 
 
 async def _do_sync_teams():
@@ -188,15 +211,25 @@ async def sync_players(*, skip_if_fresh: bool = False):
 
 
 async def _do_sync_first_goals():
+    # Pasado el plazo de gracia se deja de insistir: si la API no publicó los eventos
+    # del primer gol en FIRST_GOAL_GRACE_HOURS, no se sigue consultando (los puntos ya
+    # se calculan sin ese dato). Acota un sondeo que, si no, sería indefinido para un
+    # partido con goles pero sin eventos en la API.
+    grace_cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.FIRST_GOAL_GRACE_HOURS)
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Match).where(
-                Match.status == MatchStatus.FINISHED,
+                # En vivo o finalizado: el primer gol es definitivo en cuanto se
+                # anota, así que se resuelve ya en pleno partido (no se espera al FT).
+                # Coste acotado: la condición `first_goal_team IS NULL` hace que cada
+                # partido se consulte ~1 vez (al resolverse deja de aparecer).
+                Match.status.in_([MatchStatus.LIVE, MatchStatus.FINISHED]),
                 Match.first_goal_team.is_(None),
                 Match.home_score.is_not(None),
                 Match.away_score.is_not(None),
                 # Partidos 0-0 no tienen primer gol: no consultar eventos.
                 (Match.home_score + Match.away_score) > 0,
+                Match.match_date >= grace_cutoff,
             )
         )
         matches = result.scalars().all()
@@ -244,7 +277,9 @@ async def _do_sync_first_goals():
 
 
 async def sync_first_goals():
-    """Para partidos finalizados sin primer gol, consulta eventos. Se ejecuta cada hora."""
+    """Resuelve el primer goleador de partidos en vivo o finalizados que aún no lo
+    tienen (consulta eventos). Job periódico de respaldo (cada SYNC_GOALS_HOURS): en
+    la práctica el sync de fixtures ya lo encadena tras cada corrida con éxito."""
     logger.info("Starting first goals sync...")
     await _retry(_do_sync_first_goals, "sync_first_goals")
 

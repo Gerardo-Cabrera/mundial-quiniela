@@ -73,7 +73,8 @@
     "exact": "✓ Exacto",
     "scorerLabel": "Goleador:",
     "predict": "Pronosticar",
-    "editTooltip": "Editar pronóstico"
+    "editTooltip": "Editar pronóstico",
+    "noPrediction": "Sin pronóstico"
   },
   "predictionModal": {
     "titleEdit": "Editar Pronóstico",

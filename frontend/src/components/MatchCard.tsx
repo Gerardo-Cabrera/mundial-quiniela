@@ -17,10 +17,13 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
   const { t } = useTranslation();
   const isFinished  = match.status === "finished";
   const isScheduled = match.status === "scheduled";
+  const isPlayed    = isFinished || match.status === "live";
   const hasExact    = prediction &&
     prediction.predicted_home === match.home_score &&
     prediction.predicted_away === match.away_score;
-  const goalResolved = isFinished && match.first_goal_player_id != null;
+  // El primer gol es definitivo en cuanto se anota: si ya se conoce (en vivo o
+  // finalizado) resuelve el acierto sin esperar al FT.
+  const goalResolved = match.first_goal_player_id != null;
   const goalHit      = prediction != null && isFirstGoalHit(prediction, match);
 
   return (
@@ -76,8 +79,8 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
         </div>
       </div>
 
-      {/* Real first goal scorer (finished matches) */}
-      {isFinished && match.first_goal_player && (
+      {/* Primer goleador real: en cuanto se conoce (en vivo o finalizado). */}
+      {isPlayed && match.first_goal_player && (
         <div className="mt-3 flex items-center justify-center gap-1.5 text-xs">
           <span className="text-ucl-silver/50">⚽ {t("matchCard.firstGoalLabel")}</span>
           <span className="font-medium text-ucl-white">{match.first_goal_player}</span>
@@ -130,6 +133,13 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
           >
             {t("matchCard.predict")}
           </button>
+        </div>
+      ) : isPlayed ? (
+        // Sin pronóstico en un partido ya jugado: pie uniforme para que la tarjeta
+        // conserve la misma altura/estructura que las que sí tienen pronóstico
+        // (evita el desajuste "sin cuadrar" en la grilla de Resultados).
+        <div className="mt-auto pt-3 border-t border-ucl-blue/30 text-center">
+          <span className="text-xs text-ucl-silver/40">{t("matchCard.noPrediction")}</span>
         </div>
       ) : null}
     </div>

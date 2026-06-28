@@ -287,6 +287,97 @@ async def test_upsert_handles_duplicate_keys_in_batch():
     assert rows[0].away_score == 2
 
 
+@pytest.mark.asyncio
+async def test_sync_fixtures_pipeline_scores_on_newly_finished(monkeypatch):
+    """Pipeline near-real-time: cuando un partido pasa a FINISHED, sync_fixtures
+    encadena primer gol + puntos en la MISMA corrida (sin esperar a los timers)."""
+    async with TestSessionLocal() as session:
+        user = User(team_name="Jax FC", email="pipe@test.com", hashed_password="x")
+        session.add(user)
+        await session.flush()
+        match = Match(
+            api_fixture_id=9300, home_team="Argentina", away_team="Brazil",
+            phase=MatchPhase.GROUP_STAGE, status=MatchStatus.LIVE,
+            match_date=datetime.now(timezone.utc) - timedelta(minutes=130),
+        )
+        session.add(match)
+        await session.flush()
+        session.add(Prediction(
+            user_id=user.id, match_id=match.id,
+            predicted_home=2, predicted_away=1, first_goal_player_id=SCORER_ID,
+        ))
+        await session.commit()
+
+    # La API ahora reporta el partido FINISHED 2-1 y sus eventos con el primer gol.
+    recent = (datetime.now(timezone.utc) - timedelta(minutes=130)).isoformat()
+    monkeypatch.setattr(football_api, "fetch_fixtures", _returns([
+        _raw_fixture(9300, home_score=2, away_score=1, status="FT", date=recent),
+    ]))
+    monkeypatch.setattr(football_api, "fetch_fixture_events",
+                        _returns([_goal_event(SCORER_ID, "Messi", "Argentina", elapsed=10)]))
+    monkeypatch.setattr(scheduler_module, "_last_fixtures_fetch", None)  # idle_due → corre
+
+    await scheduler_module.sync_fixtures()
+
+    pred = await _get_prediction(
+        (await _first_prediction_id())
+    )
+    assert pred.is_calculated is True
+    assert pred.points_earned == 16  # exacto 8 + victoria 5 + primer gol 3, sin esperar timers
+
+
+async def _first_prediction_id() -> int:
+    async with TestSessionLocal() as session:
+        return (await session.execute(select(Prediction.id))).scalars().first()
+
+
+@pytest.mark.asyncio
+async def test_sync_first_goals_resolves_live_match(monkeypatch):
+    """El primer gol se resuelve también en partidos EN VIVO (no solo finalizados):
+    aparece en pleno partido, sin esperar al FT."""
+    async with TestSessionLocal() as session:
+        session.add(Match(
+            api_fixture_id=9400, home_team="Argentina", away_team="Brazil",
+            home_score=1, away_score=0, status=MatchStatus.LIVE,
+            phase=MatchPhase.GROUP_STAGE,
+            match_date=datetime.now(timezone.utc) - timedelta(minutes=20),
+        ))
+        await session.commit()
+    monkeypatch.setattr(football_api, "fetch_fixture_events",
+                        _returns([_goal_event(SCORER_ID, "Messi", "Argentina", elapsed=12)]))
+
+    await scheduler_module._do_sync_first_goals()
+
+    async with TestSessionLocal() as session:
+        m = (await session.execute(
+            select(Match).where(Match.api_fixture_id == 9400)
+        )).scalars().first()
+    assert m.first_goal_player_id == SCORER_ID
+    assert m.first_goal_team == "Argentina"
+
+
+@pytest.mark.asyncio
+async def test_sync_first_goals_gives_up_after_grace(monkeypatch):
+    """Pasado el plazo de gracia no se insiste: un partido viejo con goles pero sin
+    primer gol (la API nunca dio los eventos) deja de consultarse."""
+    calls = {"n": 0}
+    async def counting_events(*a, **k):
+        calls["n"] += 1
+        return []
+    monkeypatch.setattr(football_api, "fetch_fixture_events", counting_events)
+    async with TestSessionLocal() as session:
+        session.add(Match(
+            api_fixture_id=9500, home_team="A", away_team="B",
+            home_score=1, away_score=0, status=MatchStatus.FINISHED,
+            phase=MatchPhase.GROUP_STAGE,
+            match_date=datetime.now(timezone.utc) - timedelta(days=10),
+        ))
+        await session.commit()
+
+    await scheduler_module._do_sync_first_goals()
+    assert calls["n"] == 0  # fuera de la ventana de gracia → no consulta eventos
+
+
 async def _seed_calculated(points: int) -> int:
     """Predicción ya puntuada de un partido FINISHED (api_fixture_id=5001)."""
     pred_id = await _seed(
@@ -388,8 +479,9 @@ async def test_sync_fixtures_skips_when_nothing_pending(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_sync_fixtures_fetches_in_finish_window(monkeypatch):
-    """Consulta la API si hay un partido que pudo terminar, aunque acabe de sincronizar."""
+async def test_sync_fixtures_fetches_while_match_in_play(monkeypatch):
+    """Consulta la API mientras haya un partido EN JUEGO (kickoff pasado, aún en vivo),
+    aunque acabe de sincronizar → near-real-time durante el partido."""
     calls = {"n": 0}
     async def counting_fetch(*a, **k):
         calls["n"] += 1
@@ -399,7 +491,7 @@ async def test_sync_fixtures_fetches_in_finish_window(monkeypatch):
     async with TestSessionLocal() as session:
         session.add(Match(api_fixture_id=8006, home_team="A", away_team="B",
                           phase=MatchPhase.GROUP_STAGE, status=MatchStatus.LIVE,
-                          match_date=datetime.now(timezone.utc) - timedelta(minutes=150)))
+                          match_date=datetime.now(timezone.utc) - timedelta(minutes=30)))
         await session.commit()
     await scheduler_module.sync_fixtures()
     assert calls["n"] == 1
