@@ -58,6 +58,14 @@ async def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
+# Los jobs del scheduler usan app.database.AsyncSessionLocal DIRECTAMENTE, así 
+# que el override de arriba no los cubre. Se reapunta a la BD de test para que 
+# cualquier job disparado dentro de un endpoint (p. ej. el backfill que puntúa 
+# partidos ya finalizados) use SQLite y no toque la BD real.
+import app.services.scheduler as _scheduler_module  # noqa: E402
+
+_scheduler_module.AsyncSessionLocal = TestSessionLocal
+
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
