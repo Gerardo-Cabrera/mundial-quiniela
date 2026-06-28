@@ -309,8 +309,9 @@ async def test_sync_fixtures_pipeline_scores_on_newly_finished(monkeypatch):
         await session.commit()
 
     # La API ahora reporta el partido FINISHED 2-1 y sus eventos con el primer gol.
+    recent = (datetime.now(timezone.utc) - timedelta(minutes=130)).isoformat()
     monkeypatch.setattr(football_api, "fetch_fixtures", _returns([
-        _raw_fixture(9300, home_score=2, away_score=1, status="FT"),
+        _raw_fixture(9300, home_score=2, away_score=1, status="FT", date=recent),
     ]))
     monkeypatch.setattr(football_api, "fetch_fixture_events",
                         _returns([_goal_event(SCORER_ID, "Messi", "Argentina", elapsed=10)]))
@@ -353,6 +354,28 @@ async def test_sync_first_goals_resolves_live_match(monkeypatch):
         )).scalars().first()
     assert m.first_goal_player_id == SCORER_ID
     assert m.first_goal_team == "Argentina"
+
+
+@pytest.mark.asyncio
+async def test_sync_first_goals_gives_up_after_grace(monkeypatch):
+    """Pasado el plazo de gracia no se insiste: un partido viejo con goles pero sin
+    primer gol (la API nunca dio los eventos) deja de consultarse."""
+    calls = {"n": 0}
+    async def counting_events(*a, **k):
+        calls["n"] += 1
+        return []
+    monkeypatch.setattr(football_api, "fetch_fixture_events", counting_events)
+    async with TestSessionLocal() as session:
+        session.add(Match(
+            api_fixture_id=9500, home_team="A", away_team="B",
+            home_score=1, away_score=0, status=MatchStatus.FINISHED,
+            phase=MatchPhase.GROUP_STAGE,
+            match_date=datetime.now(timezone.utc) - timedelta(days=10),
+        ))
+        await session.commit()
+
+    await scheduler_module._do_sync_first_goals()
+    assert calls["n"] == 0  # fuera de la ventana de gracia → no consulta eventos
 
 
 async def _seed_calculated(points: int) -> int:

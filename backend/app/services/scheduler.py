@@ -211,6 +211,11 @@ async def sync_players(*, skip_if_fresh: bool = False):
 
 
 async def _do_sync_first_goals():
+    # Pasado el plazo de gracia se deja de insistir: si la API no publicó los eventos
+    # del primer gol en FIRST_GOAL_GRACE_HOURS, no se sigue consultando (los puntos ya
+    # se calculan sin ese dato). Acota un sondeo que, si no, sería indefinido para un
+    # partido con goles pero sin eventos en la API.
+    grace_cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.FIRST_GOAL_GRACE_HOURS)
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Match).where(
@@ -224,6 +229,7 @@ async def _do_sync_first_goals():
                 Match.away_score.is_not(None),
                 # Partidos 0-0 no tienen primer gol: no consultar eventos.
                 (Match.home_score + Match.away_score) > 0,
+                Match.match_date >= grace_cutoff,
             )
         )
         matches = result.scalars().all()
@@ -271,7 +277,9 @@ async def _do_sync_first_goals():
 
 
 async def sync_first_goals():
-    """Para partidos finalizados sin primer gol, consulta eventos. Se ejecuta cada hora."""
+    """Resuelve el primer goleador de partidos en vivo o finalizados que aún no lo
+    tienen (consulta eventos). Job periódico de respaldo (cada SYNC_GOALS_HOURS): en
+    la práctica el sync de fixtures ya lo encadena tras cada corrida con éxito."""
     logger.info("Starting first goals sync...")
     await _retry(_do_sync_first_goals, "sync_first_goals")
 
