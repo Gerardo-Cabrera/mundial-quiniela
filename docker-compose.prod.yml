@@ -41,12 +41,9 @@ services:
     # (N llamadas a la API de cuota limitada, carreras en el scoring). Si algún
     # día se necesita escalar, mover los jobs a un proceso/worker dedicado antes
     # de subir el número de workers. NO añadir --workers aquí.
-    # Las migraciones las aplica el ENTRYPOINT de la imagen (antes de este comando).
-    # Aquí: aprovisionar cuentas (idempotente, NO fatal) → uvicorn.
-    command: >
-      sh -c "{ python -m scripts.create_participant_users || echo '[create_participant_users] ADVERTENCIA - el aprovisionamiento de cuentas fallo, la API continua'; } &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000
-             --proxy-headers --forwarded-allow-ips='*'"
+    # El ENTRYPOINT de la imagen aplica migraciones + aprovisiona las cuentas antes
+    # de este comando. Aquí solo el servidor.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
     # /health sin curl (la imagen slim no lo trae): urllib de la stdlib.
     # start_period cubre migraciones + arranque de uvicorn antes de contar fallos.
     healthcheck:
