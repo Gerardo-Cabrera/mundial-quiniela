@@ -16,4 +16,10 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# El entrypoint aplica `alembic upgrade head` antes de cualquier comando, así las
+# migraciones corren solas en todo despliegue (no dependen del start command de
+# Render/Railway). Se invoca con `sh` para no depender del bit de ejecución (el
+# bind mount de dev sobreescribe /app con el dir del host). El CMD puede
+# sobrescribirse (compose, Render) sin perder las migraciones.
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
