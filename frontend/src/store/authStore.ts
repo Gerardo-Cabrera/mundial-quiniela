@@ -9,7 +9,6 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (teamName: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -23,11 +22,6 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password) => {
         const { data } = await apiClient.post("/api/auth/login", { email, password });
         set({ user: data.user, token: data.access_token, isAuthenticated: true });
-      },
-
-      register: async (team_name, email, password) => {
-        const { data } = await apiClient.post("/api/auth/register", { team_name, email, password });
-        set({ user: data });
       },
 
       logout: () => {

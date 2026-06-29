@@ -13,16 +13,11 @@
   },
   "auth": {
     "tabLogin": "Entrar",
-    "tabRegister": "Registrarse",
-    "yourTeam": "Tu Equipo",
-    "selectTeamAria": "Selecciona tu equipo",
-    "selectTeamPlaceholder": "— Selecciona tu equipo —",
     "email": "Email",
     "emailAria": "Correo electrónico",
     "emailPlaceholder": "tu@email.com",
     "password": "Contraseña",
     "submitLogin": "Entrar a la Quiniela",
-    "submitRegister": "Crear cuenta",
     "genericError": "Ocurrió un error. Intenta de nuevo."
   },
   "nav": {

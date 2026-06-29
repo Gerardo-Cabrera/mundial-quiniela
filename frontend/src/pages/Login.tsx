@@ -2,37 +2,25 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
-import { useTeamsConfig } from "@/hooks";
 import { Spinner } from "@/components/ui";
 
-type Mode = "login" | "register";
-
 export default function LoginPage() {
-  const [mode, setMode]         = useState<Mode>("login");
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [teamName, setTeamName] = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
 
-  const { login, register } = useAuthStore();
+  const { login } = useAuthStore();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { data: teamsConfig } = useTeamsConfig();
-  const playerTeams = teamsConfig?.allowed_teams ?? [];
 
+  // El registro está cerrado (el Mundial ya inició): las cuentas de los 16
+  // participantes se aprovisionan por script. Aquí solo se inicia sesión.
   const handleSubmit = async () => {
     setError("");
     setLoading(true);
     try {
-      if (mode === "login") {
-        await login(email, password);
-      } else {
-        await register(teamName, email, password);
-        setMode("login");
-        setError("");
-        return;
-      }
+      await login(email, password);
       navigate("/");
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? t("auth.genericError"));
@@ -72,41 +60,11 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="card border-ucl-gold/20 p-6 shadow-[0_0_60px_rgba(201,168,76,0.08)]">
-          {/* Tabs */}
-          <div className="flex mb-6 bg-ucl-navy/60 rounded-lg p-1">
-            {(["login", "register"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(""); }}
-                className={`flex-1 py-2 text-sm rounded-md transition-all duration-200 ${
-                  mode === m
-                    ? "bg-ucl-gold text-ucl-navy font-bold"
-                    : "text-ucl-silver hover:text-ucl-white"
-                }`}
-              >
-                {m === "login" ? t("auth.tabLogin") : t("auth.tabRegister")}
-              </button>
-            ))}
-          </div>
+          <h2 className="text-center text-ucl-silver text-sm font-mono uppercase tracking-wider mb-6">
+            {t("auth.tabLogin")}
+          </h2>
 
           <div className="space-y-4">
-            {mode === "register" && (
-              <div>
-                <label className="block text-xs text-ucl-silver/70 mb-1.5 font-mono uppercase">{t("auth.yourTeam")}</label>
-                <select
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  className="input-base w-full"
-                  aria-label={t("auth.selectTeamAria")}
-                >
-                  <option value="">{t("auth.selectTeamPlaceholder")}</option>
-                  {playerTeams.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             <div>
               <label className="block text-xs text-ucl-silver/70 mb-1.5 font-mono uppercase">{t("auth.email")}</label>
               <input
@@ -144,8 +102,7 @@ export default function LoginPage() {
               disabled={loading}
               className="btn-primary w-full flex items-center justify-center gap-2 mt-2"
             >
-              {loading ? <><Spinner size="sm" /> {t("common.loading")}</> :
-               mode === "login" ? t("auth.submitLogin") : t("auth.submitRegister")}
+              {loading ? <><Spinner size="sm" /> {t("common.loading")}</> : t("auth.submitLogin")}
             </button>
           </div>
         </div>
