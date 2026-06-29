@@ -14,11 +14,18 @@ class UserLogin(BaseModel):
     password: str
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    # mismas reglas que el registro (bcrypt trunca a 72 bytes).
+    new_password: str = Field(min_length=8, max_length=72)
+
+
 class UserOut(BaseModel):
     id: int
     team_name: str
     email: str
     is_admin: bool
+    must_change_password: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}

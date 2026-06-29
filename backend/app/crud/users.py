@@ -20,13 +20,25 @@ class UserCRUD:
         )
         return result.scalar_one_or_none()
 
-    async def create(self, db: AsyncSession, *, team_name: str, email: str, hashed_password: str) -> User:
+    async def create(
+        self, db: AsyncSession, *, team_name: str, email: str, hashed_password: str,
+        must_change_password: bool = False,
+    ) -> User:
         user = User(
             team_name=team_name,
             email=email,
             hashed_password=hashed_password,
+            must_change_password=must_change_password,
         )
         db.add(user)
+        await db.flush()
+        await db.refresh(user)
+        return user
+
+    async def update_password(self, db: AsyncSession, user: User, *, hashed_password: str) -> User:
+        """Fija la nueva contraseña y limpia la marca de cambio obligatorio."""
+        user.hashed_password = hashed_password
+        user.must_change_password = False
         await db.flush()
         await db.refresh(user)
         return user

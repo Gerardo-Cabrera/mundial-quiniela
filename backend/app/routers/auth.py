@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
-from app.schemas import UserCreate, UserLogin, UserOut, Token
+from app.schemas import UserCreate, UserLogin, UserOut, Token, PasswordChange
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.rate_limit import limiter
+from app.core.deps import get_current_user
 from app.crud import user_crud, participant_team_crud
+from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -43,3 +45,22 @@ async def login(request: Request, data: UserLogin, db: AsyncSession = Depends(ge
 
     token = create_access_token({"sub": str(user.id)})
     return Token(access_token=token, user=UserOut.model_validate(user))
+
+
+@router.post("/change-password", response_model=UserOut)
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+async def change_password(
+    request: Request,
+    data: PasswordChange,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cambia la contraseña del usuario autenticado (verifica la actual). Limpia la
+    marca de cambio obligatorio del primer ingreso. La usan tanto ese flujo forzado
+    como el cambio voluntario."""
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta.")
+    if data.new_password == data.current_password:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe ser distinta de la actual.")
+    await user_crud.update_password(db, current_user, hashed_password=hash_password(data.new_password))
+    return current_user

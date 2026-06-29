@@ -7,9 +7,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 
 from app.config import settings
 from app.models.match import Match, MatchPhase, MatchStatus
+from app.models.user import User
 from app.services import football_api
 from tests.conftest import TestSessionLocal
 from tests.test_scheduler import _returns, _goal_event
@@ -110,6 +112,71 @@ async def test_login_nonexistent_user(client: AsyncClient):
         "password": "anything",
     })
     assert resp.status_code == 401
+
+
+# ── CHANGE PASSWORD ──────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_change_password_success(auth_client: AsyncClient):
+    """Cambia la contraseña con la actual correcta: limpia must_change_password,
+    invalida la vieja y habilita la nueva."""
+    resp = await auth_client.post("/api/auth/change-password", json={
+        "current_password": "testpass123", "new_password": "nuevapass456",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["must_change_password"] is False
+
+    old = await auth_client.post("/api/auth/login", json={
+        "email": "test@test.com", "password": "testpass123"})
+    assert old.status_code == 401
+    new = await auth_client.post("/api/auth/login", json={
+        "email": "test@test.com", "password": "nuevapass456"})
+    assert new.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_change_password_wrong_current(auth_client: AsyncClient):
+    resp = await auth_client.post("/api/auth/change-password", json={
+        "current_password": "incorrecta", "new_password": "nuevapass456"})
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_change_password_must_differ(auth_client: AsyncClient):
+    resp = await auth_client.post("/api/auth/change-password", json={
+        "current_password": "testpass123", "new_password": "testpass123"})
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_change_password_requires_auth(client: AsyncClient):
+    resp = await client.post("/api/auth/change-password", json={
+        "current_password": "x", "new_password": "yyyyyyyy"})
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_login_exposes_forced_flag_and_change_clears_it(client: AsyncClient):
+    """Una cuenta marcada (como las que crea el script) expone el flag en el login
+    y lo limpia al cambiar la contraseña."""
+    await client.post("/api/auth/register", json={
+        "team_name": "Megalink FC", "email": "mc@test.com", "password": "12345678"})
+    async with TestSessionLocal() as s:
+        user = (await s.execute(select(User).where(User.email == "mc@test.com"))).scalar_one()
+        user.must_change_password = True
+        await s.commit()
+
+    login = await client.post("/api/auth/login", json={
+        "email": "mc@test.com", "password": "12345678"})
+    assert login.status_code == 200
+    assert login.json()["user"]["must_change_password"] is True
+
+    client.headers["Authorization"] = f"Bearer {login.json()['access_token']}"
+    chg = await client.post("/api/auth/change-password", json={
+        "current_password": "12345678", "new_password": "nuevapass789"})
+    assert chg.status_code == 200
+    assert chg.json()["must_change_password"] is False
 
 
 # ── PROTECTED ENDPOINTS (unauthorized) ───────────────────────────────────────

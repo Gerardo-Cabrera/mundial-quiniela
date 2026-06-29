@@ -7,25 +7,24 @@ del nombre del equipo (slug + dominio). Es idempotente: omite los equipos que ya
 tienen usuario. Por defecto OMITE el equipo del admin ("Super Saiyajins C.F"), que
 ya tiene su correo (admin@gmail.com).
 
+La contraseña inicial es compartida ("12345678") y las cuentas quedan marcadas con
+`must_change_password=True`: la app obliga a cambiarla en el primer inicio de sesión.
+
 El correo es solo el identificador de inicio de sesión (la app no envía emails).
 
 Uso (desde el directorio backend/, en local o en producción):
 
-    python -m scripts.create_participant_users              # contraseña aleatoria por usuario
+    python -m scripts.create_participant_users              # contraseña inicial "12345678"
     python -m scripts.create_participant_users --dry-run    # solo muestra qué haría
-    python -m scripts.create_participant_users --password X # contraseña compartida
+    python -m scripts.create_participant_users --password X # otra contraseña inicial
     python -m scripts.create_participant_users --domain quiniela.com
 
 Producción (Render / Supabase): usa la misma DATABASE_URL de la app (variable de
 entorno). En Render, ejecútalo como comando puntual del servicio backend (Shell o
 Job); contra Supabase basta con que DATABASE_URL apunte a Supabase.
-
-⚠️ La salida incluye las contraseñas en texto plano (para entregárselas a cada
-participante). Trátala con cuidado: en Render/Supabase queda en los logs.
 """
 import argparse
 import asyncio
-import secrets
 import unicodedata
 
 from app.core.security import hash_password
@@ -35,6 +34,8 @@ from app.database import AsyncSessionLocal
 # Equipo del admin: ya tiene cuenta (admin@gmail.com), se omite por defecto.
 DEFAULT_SKIP_TEAMS = ["Super Saiyajins C.F"]
 DEFAULT_DOMAIN = "gmail.com"
+# Contraseña inicial compartida; el usuario la cambia en el primer ingreso.
+DEFAULT_PASSWORD = "12345678"
 
 
 def email_for(team_name: str, domain: str) -> str:
@@ -45,8 +46,8 @@ def email_for(team_name: str, domain: str) -> str:
     return f"{slug}@{domain}"
 
 
-async def provision(*, domain: str, password: str | None, skip_teams: set[str], dry_run: bool):
-    created: list[tuple[str, str, str]] = []
+async def provision(*, domain: str, password: str, skip_teams: set[str], dry_run: bool):
+    created: list[tuple[str, str]] = []
     skipped: list[tuple[str, str]] = []
     async with AsyncSessionLocal() as db:
         for team in await participant_team_crud.get_all_names(db):
@@ -60,21 +61,22 @@ async def provision(*, domain: str, password: str | None, skip_teams: set[str], 
             if await user_crud.get_by_email(db, email):
                 skipped.append((team, f"correo {email} ya en uso"))
                 continue
-            pwd = password or secrets.token_urlsafe(9)
             if not dry_run:
                 await user_crud.create(
-                    db, team_name=team, email=email, hashed_password=hash_password(pwd)
+                    db, team_name=team, email=email,
+                    hashed_password=hash_password(password), must_change_password=True,
                 )
-            created.append((team, email, pwd))
+            created.append((team, email))
         if not dry_run:
             await db.commit()
 
     title = "DRY-RUN (no se creó nada)" if dry_run else "Cuentas creadas"
     print(f"\n=== {title} ({len(created)}) ===")
     if created:
-        w = max(len(t) for t, _, _ in created)
-        for team, email, pwd in created:
-            print(f"  {team:<{w}}  {email:<34}  {pwd}")
+        w = max(len(t) for t, _ in created)
+        for team, email in created:
+            print(f"  {team:<{w}}  {email}")
+        print(f"\nContraseña inicial (deben cambiarla en el primer ingreso): {password}")
     if skipped:
         print(f"\n--- Omitidos ({len(skipped)}) ---")
         for team, reason in skipped:
@@ -85,7 +87,7 @@ async def provision(*, domain: str, password: str | None, skip_teams: set[str], 
 def main() -> None:
     p = argparse.ArgumentParser(description="Aprovisiona las cuentas de los participantes.")
     p.add_argument("--domain", default=DEFAULT_DOMAIN, help=f"Dominio del correo (def: {DEFAULT_DOMAIN})")
-    p.add_argument("--password", default=None, help="Contraseña compartida; por defecto una aleatoria por usuario")
+    p.add_argument("--password", default=DEFAULT_PASSWORD, help=f"Contraseña inicial compartida (def: {DEFAULT_PASSWORD})")
     p.add_argument("--skip-team", action="append", default=None,
                    help=f"Equipo(s) a omitir; reemplaza el valor por defecto {DEFAULT_SKIP_TEAMS}")
     p.add_argument("--dry-run", action="store_true", help="Muestra qué haría sin escribir en la BD")
