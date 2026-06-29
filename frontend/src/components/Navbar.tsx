@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Trophy, CalendarDays, Goal, ListChecks, LogOut, User } from "lucide-react";
+import { Trophy, CalendarDays, Goal, ListChecks, LogOut, KeyRound, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { clsx } from "clsx";
@@ -61,6 +61,12 @@ export function Navbar() {
             </div>
             <span className="text-xs text-ucl-silver truncate">{user?.team_name}</span>
           </div>
+          <button
+            onClick={() => navigate("/change-password")}
+            className="w-full flex items-center gap-2 px-2 py-2 mb-2 rounded-lg text-sm text-ucl-silver hover:text-ucl-white hover:bg-ucl-blue/30 transition-colors"
+          >
+            <KeyRound size={14} /> {t("nav.changePassword")}
+          </button>
           <button onClick={handleLogout} className="btn-secondary w-full flex items-center justify-center gap-2 text-sm py-2">
             <LogOut size={14} /> {t("nav.logout")}
           </button>

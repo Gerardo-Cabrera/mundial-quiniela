@@ -9,6 +9,7 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -22,6 +23,15 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password) => {
         const { data } = await apiClient.post("/api/auth/login", { email, password });
         set({ user: data.user, token: data.access_token, isAuthenticated: true });
+      },
+
+      changePassword: async (currentPassword, newPassword) => {
+        const { data } = await apiClient.post("/api/auth/change-password", {
+          current_password: currentPassword,
+          new_password: newPassword,
+        });
+        // Respuesta = UserOut actualizado (must_change_password ya en false).
+        set({ user: data });
       },
 
       logout: () => {

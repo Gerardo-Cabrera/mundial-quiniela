@@ -18,13 +18,26 @@
     "emailPlaceholder": "tu@email.com",
     "password": "Contraseña",
     "submitLogin": "Entrar a la Quiniela",
-    "genericError": "Ocurrió un error. Intenta de nuevo."
+    "genericError": "Ocurrió un error. Intenta de nuevo.",
+    "changePassword": {
+      "title": "Cambiar contraseña",
+      "forcedNotice": "Por seguridad, cambia tu contraseña inicial antes de continuar.",
+      "voluntaryHint": "Ingresa tu contraseña actual y la nueva.",
+      "current": "Contraseña actual",
+      "new": "Nueva contraseña",
+      "confirm": "Confirmar nueva contraseña",
+      "submit": "Guardar contraseña",
+      "cancel": "Cancelar",
+      "mismatch": "Las contraseñas no coinciden.",
+      "success": "Contraseña actualizada."
+    }
   },
   "nav": {
     "table": "Tabla",
     "matches": "Partidos",
     "results": "Resultados",
     "predictions": "Pronósticos",
+    "changePassword": "Cambiar contraseña",
     "logout": "Salir"
   },
   "dashboard": {

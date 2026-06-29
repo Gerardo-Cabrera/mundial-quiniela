@@ -18,6 +18,7 @@ export interface User {
   team_name: string;
   email: string;
   is_admin: boolean;
+  must_change_password: boolean;
   created_at: string;
 }
 
