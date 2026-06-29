@@ -1,16 +1,20 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from app.models.match import Match
 from app.models.prediction import Prediction
 
 
 class PredictionCRUD:
     async def get_by_user(self, db: AsyncSession, user_id: int) -> list[Prediction]:
+        # Ordenado por la fecha REAL del partido (no por created_at): un pronóstico
+        # cargado por backfill conserva su lugar cronológico. id desc desempata.
         result = await db.execute(
             select(Prediction)
+            .join(Match)
             .where(Prediction.user_id == user_id)
             .options(selectinload(Prediction.match))
-            .order_by(Prediction.created_at.desc())
+            .order_by(Match.match_date.desc(), Match.id.desc())
         )
         return list(result.scalars().all())
 
