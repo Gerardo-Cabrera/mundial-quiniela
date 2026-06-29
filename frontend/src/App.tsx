@@ -8,11 +8,12 @@ import { Navbar } from "@/components/Navbar";
 import { ErrorFallback } from "@/components/ErrorFallback";
 import { TOASTER_STYLE } from "@/config";
 
-import LoginPage        from "@/pages/Login";
-import Dashboard        from "@/pages/Dashboard";
-import MatchesPage      from "@/pages/Matches";
-import ResultsPage      from "@/pages/Results";
-import MyPredictionsPage from "@/pages/MyPredictions";
+import LoginPage          from "@/pages/Login";
+import ChangePasswordPage from "@/pages/ChangePassword";
+import Dashboard          from "@/pages/Dashboard";
+import MatchesPage        from "@/pages/Matches";
+import ResultsPage        from "@/pages/Results";
+import MyPredictionsPage  from "@/pages/MyPredictions";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,8 +25,11 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedLayout() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  // Primer ingreso: obligar a cambiar la contraseña inicial antes de usar la app.
+  if (user?.must_change_password) return <ChangePasswordPage forced />;
 
   return (
     <div className="min-h-screen ucl-stars-bg">
@@ -33,10 +37,11 @@ function ProtectedLayout() {
       <main className="lg:pl-56 pb-20 lg:pb-0">
         <div className="max-w-5xl mx-auto px-4 py-6">
           <Routes>
-            <Route path="/"            element={<Dashboard />} />
-            <Route path="/matches"     element={<MatchesPage />} />
-            <Route path="/results"     element={<ResultsPage />} />
-            <Route path="/predictions" element={<MyPredictionsPage />} />
+            <Route path="/"                element={<Dashboard />} />
+            <Route path="/matches"         element={<MatchesPage />} />
+            <Route path="/results"         element={<ResultsPage />} />
+            <Route path="/predictions"     element={<MyPredictionsPage />} />
+            <Route path="/change-password" element={<ChangePasswordPage />} />
           </Routes>
         </div>
       </main>

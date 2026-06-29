@@ -30,6 +30,11 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
     <div
       className={clsx(
         "card p-4 transition-all duration-200 group flex flex-col h-full",
+        // Altura mínima uniforme para toda la vista. Por fila el grid ya iguala;
+        // el min-h cubre la variación entre días/contenido (footer de pronóstico vs
+        // botón vs "sin pronóstico", línea de goleador real, nombres a 2 líneas).
+        // Mayor en los jugados (Resultados): llevan marcador y goleador real.
+        isPlayed ? "min-h-[15rem]" : "min-h-[13rem]",
         prediction && "border-ucl-gold/20",
         match.status === "live" && "border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.08)]"
       )}
