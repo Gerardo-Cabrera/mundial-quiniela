@@ -70,18 +70,22 @@ async def provision(*, domain: str, password: str, skip_teams: set[str], dry_run
         if not dry_run:
             await db.commit()
 
-    title = "DRY-RUN (no se creó nada)" if dry_run else "Cuentas creadas"
-    print(f"\n=== {title} ({len(created)}) ===")
+    # Detalle solo cuando aporta: las cuentas creadas (primer arranque) y, en dry-run,
+    # también las omitidas. En reinicios idempotentes (0 creadas) basta el resumen.
     if created:
+        title = "DRY-RUN (no se crearía)" if dry_run else "Cuentas creadas"
+        print(f"\n=== {title} ({len(created)}) ===")
         w = max(len(t) for t, _ in created)
         for team, email in created:
             print(f"  {team:<{w}}  {email}")
-        print(f"\nContraseña inicial (deben cambiarla en el primer ingreso): {password}")
-    if skipped:
+        print(f"Contraseña inicial (deben cambiarla en el primer ingreso): {password}")
+    if dry_run and skipped:
         print(f"\n--- Omitidos ({len(skipped)}) ---")
         for team, reason in skipped:
             print(f"  {team}: {reason}")
-    print()
+    # Línea-resumen final (señal greppable de éxito en los logs de arranque).
+    mode = "DRY-RUN" if dry_run else "OK"
+    print(f"[create_participant_users] {mode} — creadas={len(created)} omitidas={len(skipped)}")
 
 
 def main() -> None:

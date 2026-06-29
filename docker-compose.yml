@@ -23,8 +23,10 @@ services:
       - DATABASE_URL=postgresql+asyncpg://mundial:mundial_pass@localhost:5432/mundial_quiniela
     volumes:
       - ./backend:/app
-    # Migraciones primero (idempotente): garantiza que las tablas existan.
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"
+    # Arranque: migraciones (fatales) → aprovisionar cuentas de participantes
+    # (idempotente y NO fatal: si falla, la API igual arranca) → uvicorn. El seed
+    # solo crea las cuentas que falten; en reinicios no hace nada.
+    command: sh -c "alembic upgrade head && { python -m scripts.create_participant_users || echo '[create_participant_users] ADVERTENCIA - el aprovisionamiento de cuentas fallo, la API continua'; } && uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"
 
   frontend:
     build:
