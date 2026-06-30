@@ -19,9 +19,9 @@ PARTICIPANT_TEAM = {
     "fiebruos":      "Fiebruos C.F",
     "soldierboy":    "Soldier Boy",
     "rojosdelavila": "Rojos Del Ávila",
-    "mugionce":      "Mugion ce FC",
+    "mugionce":      "Mugionce FC",
     "petare":        "Petare F.C",
-    "omegalink":     "Megalink FC",
+    "omegalink":     "Omegalink FC",
     # Usuarios nuevos (se crean al cargar sus pronósticos):
     "desk":          "Desk FC",
     "flamex":        "Flamex F.C",

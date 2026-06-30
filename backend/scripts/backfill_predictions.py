@@ -332,7 +332,7 @@ async def run(*, notes_paths, domain, dry_run, report_path):
                 if not preds:
                     continue
                 user, created = await _ensure_user(db, participant, domain, dry_run)
-                if created:
+                if created and participant not in created_users:  # un usuario, una vez
                     created_users.append(participant)
                 for match, home, away, scorer_text in preds:
                     fg_id, fg_name = await _resolve_scorer(db, match, scorer_text, squads, report, participant)
