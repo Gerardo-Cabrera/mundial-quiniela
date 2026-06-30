@@ -64,8 +64,10 @@ def _norm_text(s: str) -> str:
 
 
 def _find_teams(line: str) -> list[str]:
-    """Equipos (nombre EN de la BD) mencionados en la línea, en orden de aparición."""
-    t = f" {_norm_text(line)} "
+    """Equipos (nombre EN de la BD) mencionados en la línea, en orden de aparición.
+    Los paréntesis son anotaciones ("(penal para Argentina)"), no datos: se quitan
+    para no confundir una línea de goleador con un partido."""
+    t = f" {_norm_text(re.sub(r'\(.*?\)', ' ', line))} "
     used = [False] * len(t)
     found: list[tuple[int, str]] = []
     for key in _TEAM_KEYS:
@@ -148,7 +150,11 @@ class MatchIndex:
 def _parse_blocks(text: str):
     """Genera (participante_or_None, fecha, [(teams, home, away, scorer_text)], report)."""
     blocks = re.split(r"^-{3,}\s*$", text, flags=re.MULTILINE)
-    current_date = None
+    # Cada archivo corresponde a UNA jornada: si un bloque no trae fecha (p. ej. el
+    # primero del archivo), se hereda la primera fecha que aparezca en el archivo
+    # (sin ella, un pronóstico de un solo equipo que juega varios partidos no se
+    # podría desambiguar y se perdería).
+    current_date = next((d for ln in text.splitlines() if (d := _parse_date(ln))), None)
     for raw in blocks:
         lines = [l.rstrip() for l in raw.splitlines()]
         for l in lines:
@@ -233,7 +239,13 @@ async def _resolve_scorer(db, match, scorer_text, squads, report, who):
     """Resuelve el goleador contra las DOS plantillas del partido (alta confianza)."""
     if not scorer_text:
         return None, None
-    toks = _tokens(SCORER_ALIASES.get(_norm_alnum(scorer_text), scorer_text))
+    # Alias por PALABRA completa del nombre normalizado: tolera iniciales/sufijos
+    # ("K. Mbape", "Vini Jr") sin falsos positivos por subcadena (p. ej. "arda" dentro
+    # de "Bardakci"). El alias solo cambia el término de búsqueda; la resolución sigue
+    # siendo contra la plantilla del partido.
+    words = f" {' '.join(_norm_text(scorer_text).split())} "
+    search = next((v for k, v in SCORER_ALIASES.items() if f" {k} " in words), scorer_text)
+    toks = _tokens(search)
     if not toks:
         return None, None
     if match.id not in squads:
@@ -244,14 +256,20 @@ async def _resolve_scorer(db, match, scorer_text, squads, report, who):
     )
     detail = f"{scorer_text} → {match.home_team} vs {match.away_team}"
     best = scored[0][0] if scored else 0
-    second = scored[1][0] if len(scored) > 1 else 0
     if best == 0:
         report.append(("goleador_no_resuelto", who, detail))
         return None, None
-    if best == second:  # sin ganador claro
-        report.append(("goleador_ambiguo", who, detail))
-        return None, None
-    return scored[0][1].api_player_id, scored[0][1].name
+    tied = [p for s, p in scored if s == best]
+    if len(tied) > 1:
+        # Desempate por inicial: las plantillas guardan "X. Apellido"; si el texto de
+        # búsqueda empieza por la inicial de UN solo empatado, se elige ese (p. ej.
+        # "Jonathan David"/"J. David" -> J. David, no P. David). Si no, queda ambiguo.
+        initial = _strip_accents(search.strip())[:1].lower()
+        tied = [p for p in tied if p.name[:1].lower() == initial]
+        if len(tied) != 1:
+            report.append(("goleador_ambiguo", who, detail))
+            return None, None
+    return tied[0].api_player_id, tied[0].name
 
 
 async def _ensure_user(db, team_name, domain, dry_run):

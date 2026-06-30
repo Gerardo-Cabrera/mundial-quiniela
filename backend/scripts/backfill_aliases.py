@@ -62,12 +62,24 @@ TEAM_ES_EN = {
 
 # ── Goleadores ────────────────────────────────────────────────────────────────
 # Solo para sobrenombres/typos que el apellido directo NO resuelve contra la
-# plantilla. clave = subcadena normalizada en la nota -> término de búsqueda real.
-# Los que no resuelvan ni así se cargan SIN goleador y se reportan.
+# plantilla. La clave se compara como PALABRA completa del nombre NORMALIZADO de la
+# nota (minúsculas, sin acentos: "K. Mbape" -> "k mbape", coincide "mbape"); así se
+# evitan falsos positivos por subcadena (p. ej. "arda" dentro de "Bardakci"). Las
+# claves de varias palabras llevan espacio ("al dawsari"). El valor es el término de
+# búsqueda real; los que no resuelvan ni así se cargan SIN goleador y se reportan.
 SCORER_ALIASES = {
     "vini":   "Vinicius",
     "halaand": "Haaland", "halland": "Haaland", "haland": "Haaland", "haalnd": "Haaland",
     "mbape":  "Mbappe",
+    "kai":    "Havertz",           # Kai Havertz (guardado "K. Havertz")
+    "arda":   "Güler",             # Arda Güler (guardado "A. Güler")
     "julian": "Julian Alvarez",
     "raul jimenes": "Jimenez", "raul jimenez": "Jimenez", "gimenez": "Gimenez",
+    "david": "Jonathan David",  # Canadá tiene J. y P. David; el desempate por inicial elige a Jonathan
+    # Apellidos repetidos en plantilla -> jugador acordado (la inicial del valor desempata):
+    "valencia":   "E. Valencia",    # Enner (no A. Valencia)
+    "caicedo":    "M. Caicedo",     # Moisés (no J. Caicedo)
+    "sarr":       "I. Sarr",        # Ismaïla (no M./P. Sarr)
+    "al dawsari": "S. Al Dawsari",  # Salem (no Nasser)
+    "diomande":   "Y. Diomandé",    # Yan (no O. Diomandé)
 }
