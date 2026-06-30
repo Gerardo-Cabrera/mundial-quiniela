@@ -632,3 +632,29 @@ async def test_sync_players_startup_runs_on_partial_coverage(monkeypatch):
 
     await scheduler_module.sync_players(skip_if_fresh=True)
     assert calls["n"] >= 1  # incompleto → sincroniza
+
+
+@pytest.mark.asyncio
+async def test_sync_players_stores_under_canonical_team_name(monkeypatch):
+    """La plantilla se guarda bajo el nombre de `teams` (el de los partidos), aunque
+    /players/squads use otro nombre para la misma selección ('Czech Republic' vs
+    'Czechia'). Si no, quedaría huérfana y no haría match con su partido."""
+    async def fake_fetch(team_api_id):
+        return [{
+            "team": {"id": team_api_id, "name": "Czech Republic"},  # nombre del endpoint
+            "players": [{"id": 794, "name": "P. Schick", "position": "Attacker", "photo": None}],
+        }]
+    monkeypatch.setattr(football_api, "fetch_squad", fake_fetch)
+    async with TestSessionLocal() as session:
+        await session.execute(delete(Player))
+        await session.execute(delete(Team))
+        session.add(Team(api_team_id=770, name="Czechia"))  # nombre canónico (el de los partidos)
+        await session.commit()
+
+    await scheduler_module.sync_players()
+
+    async with TestSessionLocal() as session:
+        names = (await session.execute(
+            select(Player.team_name).where(Player.api_player_id == 794)
+        )).scalars().all()
+    assert names == ["Czechia"]  # bajo el nombre canónico, no "Czech Republic"
