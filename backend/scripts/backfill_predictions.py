@@ -95,6 +95,17 @@ def _clean_scorer(line: str) -> str | None:
     return txt if _norm_alnum(txt) else None
 
 
+def _inline_scorer(line: str) -> str | None:
+    """Goleador escrito en la MISMA línea del marcador ('Turquía 3-1 Yilmaz',
+    'Suecia 3 vs Túnez 1 gyokeres', '2-1 Ali'): el texto tras el último número, si no
+    es un equipo (p. ej. 'Australia 0 vs 1 Turquía' → sin goleador). None si no hay."""
+    nums = list(re.finditer(r"\d+", line))
+    if not nums:
+        return None
+    tail = line[nums[-1].end():]
+    return None if _find_teams(tail) else _clean_scorer(tail)
+
+
 def _tokens(s: str) -> list[str]:
     return [t for t in re.findall(r"[a-z0-9]+", _strip_accents(s).lower()) if len(t) >= 2]
 
@@ -210,14 +221,16 @@ def _extract_predictions(lines, index, note_date, report, who):
             home, away = scores
         else:
             away, home = scores
-        # Goleador: primera línea no vacía tras el marcador que no sea otro partido.
-        scorer = None
-        j = score_line_idx + 1
-        while j < n and not lines[j].strip():
-            j += 1
-        if j < n and not _find_teams(lines[j]) and not _parse_date(lines[j]):
-            scorer = _clean_scorer(lines[j])
-            score_line_idx = j
+        # Goleador: en la MISMA línea del marcador ("Turquía 3-1 Yilmaz") o, si no, en
+        # la primera línea no vacía siguiente que no sea otro partido ni la fecha.
+        scorer = _inline_scorer(lines[score_line_idx])
+        if scorer is None:
+            j = score_line_idx + 1
+            while j < n and not lines[j].strip():
+                j += 1
+            if j < n and not _find_teams(lines[j]) and not _parse_date(lines[j]):
+                scorer = _clean_scorer(lines[j])
+                score_line_idx = j
         preds.append((match, home, away, scorer))
         i = score_line_idx + 1
     return preds

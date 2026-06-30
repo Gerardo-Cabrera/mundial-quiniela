@@ -83,4 +83,5 @@ SCORER_ALIASES = {
     "sarr":       "I. Sarr",        # Ismaïla (no M./P. Sarr)
     "al dawsari": "S. Al Dawsari",  # Salem (no Nasser)
     "diomande":   "Y. Diomandé",    # Yan (no O. Diomandé)
+    "ali":        "Alipour",         # Ali Alipour, Irán (único delantero "Ali" de la plantilla)
 }
