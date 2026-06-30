@@ -71,6 +71,7 @@ SCORER_ALIASES = {
     "vini":   "Vinicius",
     "halaand": "Haaland", "halland": "Haaland", "haland": "Haaland", "haalnd": "Haaland",
     "mbape":  "Mbappe",
+    "kike":   "Mbappe", "kiki": "Mbappe",  # apodo del pool para Kylian Mbappé
     "kai":    "Havertz",           # Kai Havertz (guardado "K. Havertz")
     "arda":   "Güler",             # Arda Güler (guardado "A. Güler")
     "julian": "Julian Alvarez",
