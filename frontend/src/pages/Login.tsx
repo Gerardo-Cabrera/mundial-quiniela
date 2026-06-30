@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
+import { apiErrorMessage } from "@/api/client";
 import { Spinner } from "@/components/ui";
 
 export default function LoginPage() {
@@ -23,7 +24,7 @@ export default function LoginPage() {
       await login(email, password);
       navigate("/");
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? t("auth.genericError"));
+      setError(apiErrorMessage(err, t("auth.genericError")));
     } finally {
       setLoading(false);
     }

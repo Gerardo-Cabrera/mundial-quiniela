@@ -73,6 +73,27 @@ export function Navbar() {
         </div>
       </aside>
 
+      {/* Mobile top bar: en escritorio "cuenta/salir" viven en el sidebar; en móvil
+          el bottom-nav solo tiene navegación, así que aquí va cambiar contraseña + salir. */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-ucl-navy/95 backdrop-blur border-b border-ucl-blue/40 flex items-center justify-between px-4">
+        <h1 className="font-display text-2xl text-ucl-gold tracking-wider">{t("brand.name")}</h1>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => navigate("/change-password")}
+            aria-label={t("nav.changePassword")}
+            className="p-2 rounded-lg text-ucl-silver hover:text-ucl-white hover:bg-ucl-blue/30 transition-colors"
+          >
+            <KeyRound size={18} />
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-ucl-silver hover:text-ucl-white hover:bg-ucl-blue/30 transition-colors"
+          >
+            <LogOut size={16} /> {t("nav.logout")}
+          </button>
+        </div>
+      </header>
+
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-ucl-navy/95 backdrop-blur border-t border-ucl-blue/40 flex">
         {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
