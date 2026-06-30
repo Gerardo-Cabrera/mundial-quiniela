@@ -122,14 +122,19 @@ async def fetch_squad(team_api_id: int) -> list[dict]:
     return await _get("players/squads", {"team": team_api_id})
 
 
-def parse_squad(squad_data: dict) -> list[dict]:
+def parse_squad(squad_data: dict, team_name: str | None = None) -> list[dict]:
     """Transforma una entrada de `/players/squads` en filas de la tabla `players`.
 
     Estructura de entrada: {"team": {id, name}, "players": [{id, name, position, photo}]}.
+
+    `team_name` (opcional): nombre canónico de la selección (el de los partidos). El
+    endpoint de plantillas a veces usa otro nombre para la misma selección (p. ej.
+    'Czech Republic' aquí vs 'Czechia' en los fixtures); pasarlo evita que la plantilla
+    quede 'huérfana' y no haga match con su partido.
     """
     team = squad_data["team"]
     team_api_id = team["id"]
-    team_name = team["name"]
+    team_name = team_name or team["name"]
     parsed: list[dict] = []
     for p in squad_data.get("players", []):
         if p.get("id") is None:
