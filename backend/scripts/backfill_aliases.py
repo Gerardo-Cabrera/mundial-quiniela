@@ -38,9 +38,13 @@ PARTICIPANT_TEAM = {
 # Las claves más largas tienen prioridad (se buscan primero) para no confundir
 # "corea" dentro de "corea del sur".
 TEAM_ES_EN = {
+    "portugal": "Portugal", "rd congo": "Congo DR", "congo": "Congo DR",
+    "inglaterra": "England", "croacia": "Croatia",
+    "ghana": "Ghana", "panama": "Panama",
+    "uzbekistan": "Uzbekistan", "colombia": "Colombia",
     "mexico": "Mexico", "sudafrica": "South Africa",
     "corea del sur": "South Korea", "sur corea": "South Korea", "corea": "South Korea",
-    "republica checa": "Czechia", "rep checa": "Czechia", "checa": "Czechia",
+    "republica checa": "Czechia", "rep checa": "Czechia", "chequia": "Czechia", "checa": "Czechia",
     "canada": "Canada", "bosnia": "Bosnia & Herzegovina",
     "estados unidos": "USA", "usa": "USA", "paraguay": "Paraguay",
     "qatar": "Qatar", "suiza": "Switzerland",
@@ -85,4 +89,16 @@ SCORER_ALIASES = {
     "al dawsari": "S. Al Dawsari",  # Salem (no Nasser)
     "diomande":   "Y. Diomandé",    # Yan (no O. Diomandé)
     "ali":        "Alipour",         # Ali Alipour, Irán (único delantero "Ali" de la plantilla)
+    # Apodos/typos de las jornadas 17–22 jun (verificados contra las plantillas):
+    "siuiiii":  "Ronaldo", "cr7": "Ronaldo", "bicho": "Ronaldo", "cris": "Ronaldo",  # Cristiano (Portugal)
+    "harry":    "Kane",            # Harry Kane (Inglaterra)
+    "inaki":    "Williams",        # "Iñaki W" (Ghana), guardado "I. Williams"
+    "lucho":    "Díaz", "luchito": "Díaz",  # Luis Díaz (Colombia); "luchó" normaliza a "lucho"
+    "sonny":    "Son",             # Son Heung-Min (Corea del Sur)
+    "jonathan": "Jonathan David",  # "Jonathan D" sin la palabra "david"; desempata a J. (no P.) David
+    "frenkie":  "de Jong",         # Frenkie de Jong (Países Bajos)
+    "mickey":   "van de Ven",      # Micky van de Ven (Países Bajos)
+    "kdb":      "De Bruyne",       # Kevin De Bruyne (Bélgica)
+    "darwin":   "Núñez",           # Darwin Núñez (Uruguay)
+    "araujo":   "R. Araujo",       # Ronald (no M.) Araújo (Uruguay); desempata por inicial
 }
