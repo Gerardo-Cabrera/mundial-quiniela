@@ -228,7 +228,11 @@ def _extract_predictions(lines, index, note_date, report, who):
             j = score_line_idx + 1
             while j < n and not lines[j].strip():
                 j += 1
-            if j < n and not _find_teams(lines[j]) and not _parse_date(lines[j]):
+            # La línea siguiente es goleador solo si no es otro partido, ni la fecha, ni
+            # el nombre del participante (un partido sin goleador al final del bloque no
+            # debe "tragarse" el marcador del participante como si fuera el goleador).
+            if (j < n and not _find_teams(lines[j]) and not _parse_date(lines[j])
+                    and not _participant_for(lines[j])):
                 scorer = _clean_scorer(lines[j])
                 score_line_idx = j
         preds.append((match, home, away, scorer))
