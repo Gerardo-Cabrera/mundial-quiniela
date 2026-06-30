@@ -44,4 +44,22 @@ apiClient.interceptors.response.use(
   }
 );
 
+/**
+ * Normaliza un error de axios a un string seguro para mostrar. FastAPI devuelve los
+ * errores de validación (422) como `detail: [{type, loc, msg, ...}]` (array de
+ * objetos); renderizar ese objeto como hijo de React rompe la app (error #31). Aquí se
+ * extrae el texto: string directo, o los `msg` del array; si no, el `fallback`.
+ */
+export function apiErrorMessage(err: unknown, fallback: string): string {
+  const detail = (err as any)?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const msgs = detail
+      .map((d) => (d && typeof d.msg === "string" ? (d.msg as string) : ""))
+      .filter(Boolean);
+    if (msgs.length) return msgs.join(". ");
+  }
+  return fallback;
+}
+
 export default apiClient;

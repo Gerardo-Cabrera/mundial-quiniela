@@ -10,26 +10,27 @@ basta una subcadena distintiva de cómo aparece el nombre en las notas.
 """
 
 # ── Participantes ─────────────────────────────────────────────────────────────
-# clave = subcadena distintiva del nombre en las notas; valor = team_name OFICIAL.
-# Si el participante aún no tiene usuario, el script lo crea (contraseña 12345678).
+# clave = subcadena distintiva del nombre en las notas; valor = team_name EXACTO en la
+# BD (al carácter; si no coincide, el script crea un usuario DUPLICADO). Si el
+# participante aún no tiene usuario, el script lo crea (contraseña 12345678).
 PARTICIPANT_TEAM = {
-    "saiyajins":     "Super Saiyans C.F",   # el admin (admin@gmail.com); ya existe
+    "saiyajins":     "Super Saiyajins C.F", # admin (admin@gmail.com); renómbralo en prod antes
     "genkidama":     "Genkidama F.C",
     "jihyo":         "Jihyo F.C",
     "fiebruos":      "Fiebruos C.F",
     "soldierboy":    "Soldier Boy",
     "rojosdelavila": "Rojos Del Ávila",
-    "mugionce":      "Mugion ce FC",
+    "mugionce":      "Mugionce FC",
     "petare":        "Petare F.C",
-    "omegalink":     "Megalink FC",
-    # Usuarios nuevos (se crean al cargar sus pronósticos):
+    "omegalink":     "Omegalink FC",
+    # Resto de participantes (el script crea solo los que falten en la BD):
     "desk":          "Desk FC",
-    "flamex":        "Flamex F.C",
+    "flamex":        "Flamex FC",
     "putas":         "Putas FC",
-    "16132":         "106+16=132 F.C",
-    "getsugatensho": "Getsugatensho F.C",
+    "16132":         "106 + 16 = 132 FC",
+    "getsugatensho": "Getsugatensho",
     "freestyle":     "Freestyle FC",
-    "sobamelabolai": "Sobamelabolai F.C",
+    "sobamelabolai": "Sobamelabolai FC",
 }
 
 # ── Equipos ───────────────────────────────────────────────────────────────────

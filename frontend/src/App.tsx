@@ -34,7 +34,7 @@ function ProtectedLayout() {
   return (
     <div className="min-h-screen ucl-stars-bg">
       <Navbar />
-      <main className="lg:pl-56 pb-20 lg:pb-0">
+      <main className="lg:pl-56 pt-14 pb-20 lg:pt-0 lg:pb-0">
         <div className="max-w-5xl mx-auto px-4 py-6">
           <Routes>
             <Route path="/"                element={<Dashboard />} />

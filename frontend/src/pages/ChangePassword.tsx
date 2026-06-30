@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/store/authStore";
+import { apiErrorMessage } from "@/api/client";
 import { Spinner } from "@/components/ui";
 
 /**
@@ -27,13 +28,17 @@ export default function ChangePasswordPage({ forced = false }: { forced?: boolea
       setError(t("auth.changePassword.mismatch"));
       return;
     }
+    if (next.length < 8) {  // misma regla que el backend; evita el 422 y da mensaje claro
+      setError(t("auth.changePassword.tooShort"));
+      return;
+    }
     setLoading(true);
     try {
       await changePassword(current, next);
       toast.success(t("auth.changePassword.success"));
       navigate("/");
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? t("auth.genericError"));
+      setError(apiErrorMessage(err, t("auth.genericError")));
     } finally {
       setLoading(false);
     }

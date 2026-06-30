@@ -29,6 +29,7 @@
       "submit": "Guardar contraseña",
       "cancel": "Cancelar",
       "mismatch": "Las contraseñas no coinciden.",
+      "tooShort": "La nueva contraseña debe tener al menos 8 caracteres.",
       "success": "Contraseña actualizada."
     }
   },
