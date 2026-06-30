@@ -151,6 +151,9 @@ async def _do_sync_players():
     async with AsyncSessionLocal() as db:
         teams = await team_crud.get_all(db)
         team_ids = [t.api_team_id for t in teams]
+        # Nombre canónico (el de los partidos) por id, para guardar la plantilla bajo
+        # el mismo nombre con que se la busca (ver parse_squad: 'Czech Republic'→'Czechia').
+        name_by_id = {t.api_team_id: t.name for t in teams}
 
     if not team_ids:
         logger.info("Synced 0 players (no hay selecciones en BD todavía).")
@@ -172,7 +175,7 @@ async def _do_sync_players():
             logger.warning("No se pudo obtener la plantilla del equipo %s: %s", team_api_id, squad)
             continue
         for entry in squad:
-            parsed.extend(football_api.parse_squad(entry))
+            parsed.extend(football_api.parse_squad(entry, team_name=name_by_id.get(team_api_id)))
 
     async with AsyncSessionLocal() as db:
         count = await player_crud.upsert_many(db, parsed)
