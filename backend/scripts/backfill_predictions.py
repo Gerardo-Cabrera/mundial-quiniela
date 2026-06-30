@@ -361,21 +361,24 @@ def _print_summary(loaded, created_users, report, dry_run, report_path):
     print(f"\n=== {mode}: {loaded} pronósticos | usuarios nuevos: {len(created_users)} ===")
     for u in created_users:
         print(f"  + usuario creado: {u}  (contraseña inicial {DEFAULT_PASSWORD})")
+    # El reporte se reescribe SIEMPRE (también con 0 ítems) para que nunca quede
+    # obsoleto respecto a la última corrida.
+    by_kind: dict[str, list[str]] = {}
+    for kind, who, detail in report:
+        by_kind.setdefault(kind, []).append(f"[{who}] {detail}")
+    lines = [f"# Revisión manual del backfill ({len(report)} ítems)\n"]
+    for kind, items in by_kind.items():
+        lines.append(f"\n## {kind} ({len(items)})")
+        lines.extend(f"  - {it}" for it in items)
+    if not report:
+        lines.append("\n✅ Sin ítems pendientes de revisión manual.")
+    Path(report_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
     if report:
-        by_kind: dict[str, list[str]] = {}
-        for kind, who, detail in report:
-            by_kind.setdefault(kind, []).append(f"[{who}] {detail}")
-        lines = [f"# Revisión manual del backfill ({len(report)} ítems)\n"]
-        for kind, items in by_kind.items():
-            lines.append(f"\n## {kind} ({len(items)})")
-            lines.extend(f"  - {it}" for it in items)
-        text = "\n".join(lines) + "\n"
-        Path(report_path).write_text(text, encoding="utf-8")
         print(f"\n⚠️  {len(report)} ítems para revisión manual → {report_path}")
         for kind, items in by_kind.items():
             print(f"   {kind}: {len(items)}")
     else:
-        print("\n✅ Sin ítems pendientes de revisión manual.")
+        print(f"\n✅ Sin ítems pendientes de revisión manual → {report_path}")
     print()
 
 
