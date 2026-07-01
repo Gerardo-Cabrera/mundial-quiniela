@@ -257,6 +257,36 @@ async def test_leaderboard_ties_share_rank(auth_client: AsyncClient):
     ]
 
 
+@pytest.mark.asyncio
+async def test_user_predictions_only_started_matches(auth_client: AsyncClient):
+    """Ver los pronósticos de un participante desde la Tabla General expone solo
+    los de partidos ya iniciados/finalizados, nunca los de partidos por empezar."""
+    from app.models.prediction import Prediction
+
+    finished_id = await _create_match(
+        api_fixture_id=2001, status=MatchStatus.FINISHED,
+        match_date=datetime.now(timezone.utc) - timedelta(hours=2),
+    )
+    upcoming_id = await _create_match(
+        api_fixture_id=2002, status=MatchStatus.SCHEDULED,
+        match_date=datetime.now(timezone.utc) + timedelta(days=1),
+    )
+    async with TestSessionLocal() as session:
+        session.add_all([
+            Prediction(user_id=1, match_id=finished_id, predicted_home=1, predicted_away=0),
+            Prediction(user_id=1, match_id=upcoming_id, predicted_home=3, predicted_away=3),
+        ])
+        await session.commit()
+
+    # user_id viaja en el leaderboard (la Tabla General lo usa para el enlace).
+    board = (await auth_client.get("/api/leaderboard/")).json()
+    me = next(e for e in board if e["team_name"] == "Jax FC")
+    assert me["user_id"] == 1
+
+    data = (await auth_client.get(f"/api/predictions/user/{me['user_id']}")).json()
+    assert [p["match_id"] for p in data] == [finished_id]
+
+
 # ── PREDICTIONS VALIDATION ────────────────────────────────────────────────────
 
 

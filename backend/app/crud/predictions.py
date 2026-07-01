@@ -1,19 +1,24 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from app.models.match import Match
+from app.models.match import Match, MatchStatus
 from app.models.prediction import Prediction
 
 
 class PredictionCRUD:
-    async def get_by_user(self, db: AsyncSession, user_id: int) -> list[Prediction]:
+    async def get_by_user(
+        self, db: AsyncSession, user_id: int, *, started_only: bool = False
+    ) -> list[Prediction]:
         # Ordenado por la fecha REAL del partido (no por created_at): un pronóstico
         # cargado por backfill conserva su lugar cronológico. id desc desempata.
+        stmt = select(Prediction).join(Match).where(Prediction.user_id == user_id)
+        if started_only:
+            # Solo partidos ya iniciados o finalizados: al ver los pronósticos de
+            # OTRO participante nunca se revelan los de partidos aún no comenzados
+            # (no se filtran apuestas antes del inicio).
+            stmt = stmt.where(Match.status.in_((MatchStatus.LIVE, MatchStatus.FINISHED)))
         result = await db.execute(
-            select(Prediction)
-            .join(Match)
-            .where(Prediction.user_id == user_id)
-            .options(selectinload(Prediction.match))
+            stmt.options(selectinload(Prediction.match))
             .order_by(Match.match_date.desc(), Match.id.desc())
         )
         return list(result.scalars().all())

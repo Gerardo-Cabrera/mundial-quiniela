@@ -3,7 +3,8 @@
     "loading": "Cargando...",
     "vs": "vs",
     "pts": "pts",
-    "realScore": "Real: {{home}} - {{away}}"
+    "realScore": "Real: {{home}} - {{away}}",
+    "close": "Cerrar"
   },
   "brand": {
     "name": "MUNDIAL",
@@ -51,7 +52,13 @@
     "ranking": "Clasificación",
     "you": "(tú)",
     "predictionsTooltip": "Pronósticos",
-    "predictionsMade": "Pronósticos realizados"
+    "predictionsMade": "Pronósticos realizados",
+    "viewPredictions": "Ver los pronósticos de {{team}}"
+  },
+  "userPredictions": {
+    "subtitle": "Solo se muestran los partidos ya iniciados o finalizados.",
+    "emptyTitle": "Sin pronósticos visibles",
+    "emptyDescription": "Este participante aún no tiene pronósticos de partidos iniciados o finalizados."
   },
   "matches": {
     "title": "Partidos",

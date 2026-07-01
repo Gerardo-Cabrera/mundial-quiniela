@@ -28,6 +28,12 @@ export const predictionsApi = {
     const { data } = await apiClient.get("/api/predictions");
     return data;
   },
+  // Pronósticos de otro participante: el backend solo devuelve los de partidos
+  // ya iniciados o finalizados (nunca los de partidos por empezar).
+  getForUser: async (userId: number): Promise<Prediction[]> => {
+    const { data } = await apiClient.get(`/api/predictions/user/${userId}`);
+    return data;
+  },
   save: async (payload: {
     match_id: number;
     predicted_home: number;

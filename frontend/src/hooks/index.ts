@@ -44,6 +44,14 @@ export const useMyPredictions = () =>
     queryFn:  predictionsApi.getMine,
   });
 
+// Pronósticos (solo de partidos iniciados/finalizados) de otro participante.
+export const useUserPredictions = (userId: number | null) =>
+  useQuery({
+    queryKey: ["predictions", "user", userId],
+    queryFn:  () => predictionsApi.getForUser(userId!),
+    enabled:  userId != null,
+  });
+
 export const useSavePrediction = () => {
   const qc = useQueryClient();
   return useMutation({

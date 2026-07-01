@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Trophy, Target } from "lucide-react";
 import { useLeaderboard } from "@/hooks";
 import { Card, Spinner, EmptyState } from "@/components/ui";
+import { UserPredictionsModal } from "@/components/UserPredictionsModal";
 import { useAuthStore } from "@/store/authStore";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
+import type { LeaderboardEntry } from "@/types";
 
 const RANK_STYLES = [
   "text-yellow-400",  // 1st
@@ -15,6 +18,7 @@ export default function Dashboard() {
   const { data: leaderboard, isLoading } = useLeaderboard();
   const { user } = useAuthStore();
   const { t } = useTranslation();
+  const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
 
   if (isLoading) {
     return (
@@ -69,12 +73,15 @@ export default function Dashboard() {
           {leaderboard.map((entry, i) => {
             const isMe = entry.team_name === user?.team_name;
             return (
-              <div
+              <button
                 key={entry.team_name}
+                type="button"
+                onClick={() => setSelected(entry)}
+                title={t("dashboard.viewPredictions", { team: entry.team_name })}
                 className={clsx(
-                  "flex items-center gap-4 px-4 py-3 rounded-lg transition-colors",
+                  "w-full text-left flex items-center gap-4 px-4 py-3 rounded-lg transition-colors",
                   isMe
-                    ? "bg-ucl-gold/10 border border-ucl-gold/20"
+                    ? "bg-ucl-gold/10 border border-ucl-gold/20 hover:bg-ucl-gold/15"
                     : "hover:bg-ucl-blue/20"
                 )}
               >
@@ -107,7 +114,7 @@ export default function Dashboard() {
                 )}>
                   {entry.total_points}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -117,6 +124,14 @@ export default function Dashboard() {
           <span><Target size={11} className="inline mr-1" />{t("dashboard.predictionsMade")}</span>
         </div>
       </Card>
+
+      {selected && (
+        <UserPredictionsModal
+          userId={selected.user_id}
+          teamName={selected.team_name}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }
