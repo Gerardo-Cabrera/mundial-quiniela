@@ -20,9 +20,13 @@ export function PredictionCard({ pred, action }: { pred: Prediction; action?: Re
     pred.is_calculated &&
     pred.predicted_home === match.home_score &&
     pred.predicted_away === match.away_score;
-  const goalResolved = match.status === "finished" && match.first_goal_player_id != null;
+  // El primer gol es definitivo desde que el partido está EN VIVO: el backend lo
+  // resuelve para LIVE y FINISHED (mismo criterio que MatchCard). Los puntos, en
+  // cambio, se calculan al finalizar (por eso PointsChip sigue atado a is_calculated).
+  const isPlayed     = match.status === "live" || match.status === "finished";
+  const goalResolved = match.first_goal_player_id != null;
   const goalHit      = isFirstGoalHit(pred, match);
-  const showGoal     = pred.first_goal_player || (match.status === "finished" && match.first_goal_player);
+  const showGoal     = pred.first_goal_player || (isPlayed && match.first_goal_player);
 
   return (
     <div className={clsx(
@@ -94,7 +98,7 @@ export function PredictionCard({ pred, action }: { pred: Prediction; action?: Re
           ) : (
             <span className="italic">{t("myPredictions.noScorer")}</span>
           )}
-          {match.status === "finished" && match.first_goal_player && (
+          {isPlayed && match.first_goal_player && (
             <span className="text-ucl-silver/40">{t("myPredictions.realScorer", { name: match.first_goal_player })}</span>
           )}
           {goalResolved && pred.first_goal_player_id != null && (
