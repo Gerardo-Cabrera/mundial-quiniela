@@ -55,6 +55,18 @@ async def get_my_predictions(
     return await prediction_crud.get_by_user(db, current_user.id)
 
 
+@router.get("/user/{user_id}", response_model=list[PredictionOut])
+async def get_user_started_predictions(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Pronósticos de otro participante para verlos desde la Tabla General. Solo
+    incluye partidos ya **iniciados o finalizados**: nunca revela pronósticos de
+    partidos que aún no empiezan."""
+    return await prediction_crud.get_by_user(db, user_id, started_only=True)
+
+
 @router.post("/", response_model=PredictionOut, status_code=201)
 async def create_or_update_prediction(
     data: PredictionCreate,
