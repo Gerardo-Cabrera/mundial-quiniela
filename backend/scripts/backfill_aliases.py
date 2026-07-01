@@ -80,7 +80,7 @@ SCORER_ALIASES = {
     "kai":    "Havertz",           # Kai Havertz (guardado "K. Havertz")
     "arda":   "Güler",             # Arda Güler (guardado "A. Güler")
     "julian": "Julian Alvarez",
-    "raul jimenes": "Jimenez", "raul jimenez": "Jimenez", "gimenez": "Gimenez",
+    "raul jimenes": "Jimenez", "raul jimenez": "Jimenez", "raul gimenez": "Jimenez", "gimenez": "Gimenez",
     "david": "Jonathan David",  # Canadá tiene J. y P. David; el desempate por inicial elige a Jonathan
     # Apellidos repetidos en plantilla -> jugador acordado (la inicial del valor desempata):
     "valencia":   "E. Valencia",    # Enner (no A. Valencia)
@@ -101,4 +101,14 @@ SCORER_ALIASES = {
     "kdb":      "De Bruyne",       # Kevin De Bruyne (Bélgica)
     "darwin":   "Núñez",           # Darwin Núñez (Uruguay)
     "araujo":   "R. Araujo",       # Ronald (no M.) Araújo (Uruguay); desempata por inicial
+    # Apodos/typos de dieciseisavos y octavos (23–30 jun; verificados contra plantillas):
+    "arias":   "J. Arias",        # Jhon Arias (Colombia); hay J. y S. Arias
+    "silva":   "Bernardo Silva",  # Portugal: Rui (portero) y Bernardo Silva
+    "joao f":  "João Félix",      # "Joao f"/"Joao Felix" (Portugal tiene 3 Joãos)
+    "luis d":  "Díaz",            # "Luis D" (Colombia)
+    "pasalic": "Mario Pasalic",   # Croacia: Mario y Marco Pasalic
+    "julio":   "Enciso",          # Julio Enciso (Paraguay)
+    "yan":     "Y. Diomande",     # "Yan" -> Yan (no O.) Diomandé (Costa de Marfil)
+    "vandijk": "van Dijk",        # Virgil van Dijk (Países Bajos)
+    "aljuway": "Al Juwayr", "aijuway": "Al Juwayr",  # Musab Al Juwayr (Arabia Saudita)
 }
