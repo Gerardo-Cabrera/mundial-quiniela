@@ -1,6 +1,6 @@
 import apiClient from "@/api/client";
 import type {
-  Match, Player, Prediction, LeaderboardEntry,
+  Match, Player, Prediction, LeaderboardEntry, MatchdaysSummary,
   MatchPhase, MatchStatus,
 } from "@/types";
 
@@ -53,6 +53,15 @@ export const predictionsApi = {
 export const leaderboardApi = {
   get: async (): Promise<LeaderboardEntry[]> => {
     const { data } = await apiClient.get("/api/leaderboard");
+    return data;
+  },
+};
+
+// ── MATCHDAYS (Jornada / MVPs) ──────────────────────────────────────────────
+
+export const matchdaysApi = {
+  get: async (): Promise<MatchdaysSummary> => {
+    const { data } = await apiClient.get("/api/matchdays");
     return data;
   },
 };

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Trophy, CalendarDays, Goal, ListChecks, LogOut, KeyRound, User } from "lucide-react";
+import { Trophy, CalendarDays, Goal, ListChecks, CalendarRange, Crown, LogOut, KeyRound, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { clsx } from "clsx";
@@ -8,6 +8,8 @@ const NAV_ITEMS = [
   { to: "/",            labelKey: "nav.table",       icon: Trophy },
   { to: "/matches",     labelKey: "nav.matches",     icon: CalendarDays },
   { to: "/results",     labelKey: "nav.results",     icon: Goal },
+  { to: "/matchdays",   labelKey: "nav.matchdays",   icon: CalendarRange },
+  { to: "/mvps",        labelKey: "nav.mvps",        icon: Crown },
   { to: "/predictions", labelKey: "nav.predictions", icon: ListChecks },
 ];
 
@@ -103,13 +105,13 @@ export function Navbar() {
             end={to === "/"}
             className={({ isActive }) =>
               clsx(
-                "flex-1 flex flex-col items-center gap-1 py-3 text-xs transition-colors",
+                "flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 transition-colors",
                 isActive ? "text-ucl-gold" : "text-ucl-silver/60"
               )
             }
           >
-            <Icon size={20} />
-            <span>{t(labelKey)}</span>
+            <Icon size={18} />
+            <span className="text-[10px] leading-none truncate max-w-full px-0.5">{t(labelKey)}</span>
           </NavLink>
         ))}
       </nav>

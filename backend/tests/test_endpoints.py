@@ -287,6 +287,49 @@ async def test_user_predictions_only_started_matches(auth_client: AsyncClient):
     assert [p["match_id"] for p in data] == [finished_id]
 
 
+@pytest.mark.asyncio
+async def test_matchdays_summary_mvp_and_ranking(auth_client: AsyncClient):
+    """Resumen por jornada: puntos por participante, MVP del día y ranking de MVPs.
+    Solo cuenta predicciones ya calculadas (excluye partidos no jugados)."""
+    from app.models.prediction import Prediction
+
+    await auth_client.post("/api/auth/register", json={
+        "team_name": "Genkidama F.C", "email": "g2@test.com", "password": "pass1234",
+    })
+    # user 1 = Jax FC, user 2 = Genkidama F.C
+    a1 = await _create_match(api_fixture_id=3001, status=MatchStatus.FINISHED, match_date=datetime(2026, 6, 17, 12, tzinfo=timezone.utc))
+    a2 = await _create_match(api_fixture_id=3002, status=MatchStatus.FINISHED, match_date=datetime(2026, 6, 17, 12, tzinfo=timezone.utc))
+    b1 = await _create_match(api_fixture_id=3003, status=MatchStatus.FINISHED, match_date=datetime(2026, 6, 18, 12, tzinfo=timezone.utc))
+    c1 = await _create_match(api_fixture_id=3004, status=MatchStatus.SCHEDULED, match_date=datetime(2026, 6, 19, 12, tzinfo=timezone.utc))
+    async with TestSessionLocal() as session:
+        session.add_all([
+            Prediction(user_id=1, match_id=a1, predicted_home=1, predicted_away=0, points_earned=5, is_calculated=True),
+            Prediction(user_id=1, match_id=a2, predicted_home=1, predicted_away=0, points_earned=1, is_calculated=True),
+            Prediction(user_id=2, match_id=a1, predicted_home=2, predicted_away=0, points_earned=3, is_calculated=True),
+            Prediction(user_id=2, match_id=a2, predicted_home=2, predicted_away=0, points_earned=4, is_calculated=True),
+            Prediction(user_id=1, match_id=b1, predicted_home=3, predicted_away=0, points_earned=8, is_calculated=True),
+            Prediction(user_id=2, match_id=b1, predicted_home=1, predicted_away=1, points_earned=2, is_calculated=True),
+            # No calculada (partido no jugado): NO debe aparecer ninguna jornada 06-19.
+            Prediction(user_id=1, match_id=c1, predicted_home=1, predicted_away=0, points_earned=0, is_calculated=False),
+        ])
+        await session.commit()
+
+    data = (await auth_client.get("/api/matchdays/")).json()
+    assert [d["date"] for d in data["days"]] == ["2026-06-17", "2026-06-18"]  # cronológico, sin 06-19
+
+    a = data["days"][0]
+    assert a["mvp_points"] == 7 and a["mvps"] == ["Genkidama F.C"]
+    assert [(e["team_name"], e["points"]) for e in a["entries"]] == [("Genkidama F.C", 7), ("Jax FC", 6)]
+
+    assert data["days"][1]["mvps"] == ["Jax FC"] and data["days"][1]["mvp_points"] == 8
+
+    # Cada uno fue MVP una vez; empate en count → desempate alfabético.
+    assert data["mvp_ranking"] == [
+        {"team_name": "Genkidama F.C", "count": 1},
+        {"team_name": "Jax FC", "count": 1},
+    ]
+
+
 # ── PREDICTIONS VALIDATION ────────────────────────────────────────────────────
 
 

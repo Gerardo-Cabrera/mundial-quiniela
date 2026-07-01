@@ -38,9 +38,27 @@
     "table": "Tabla",
     "matches": "Partidos",
     "results": "Resultados",
+    "matchdays": "Jornada",
+    "mvps": "MVPs",
     "predictions": "Pronósticos",
     "changePassword": "Cambiar contraseña",
     "logout": "Salir"
+  },
+  "jornada": {
+    "title": "Jornada",
+    "subtitle": "Puntos por día · Mundial FIFA 2026",
+    "mvpLabel": "MVP",
+    "emptyTitle": "Sin jornadas puntuadas",
+    "emptyDescription": "Los puntos por jornada aparecerán cuando haya partidos finalizados."
+  },
+  "mvps": {
+    "title": "MVPs",
+    "subtitle": "El mejor de cada jornada · Mundial FIFA 2026",
+    "chronoTitle": "MVP por jornada",
+    "rankingTitle": "Ranking de MVPs",
+    "rankingCount": "{{n}}×",
+    "emptyTitle": "Aún no hay MVPs",
+    "emptyDescription": "El MVP de cada jornada aparecerá cuando haya partidos finalizados."
   },
   "dashboard": {
     "title": "Tabla General",
