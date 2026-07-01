@@ -115,7 +115,8 @@ def _inline_scorer(line: str) -> str | None:
     if _find_teams(tail):
         return None
     scorer = _clean_scorer(tail)
-    if scorer and all(t in _NAME_PARTICLES for t in _tokens(scorer)):
+    toks = _tokens(scorer) if scorer else []
+    if toks and all(t in _NAME_PARTICLES for t in toks):
         return None  # rabo de solo partículas: deja leer "Primer gol: …" de abajo
     return scorer
 
