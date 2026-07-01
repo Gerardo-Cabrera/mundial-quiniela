@@ -22,6 +22,7 @@ export function PredictionCard({ pred, action }: { pred: Prediction; action?: Re
     pred.predicted_away === match.away_score;
   const goalResolved = match.status === "finished" && match.first_goal_player_id != null;
   const goalHit      = isFirstGoalHit(pred, match);
+  const showGoal     = pred.first_goal_player || (match.status === "finished" && match.first_goal_player);
 
   return (
     <div className={clsx(
@@ -50,29 +51,11 @@ export function PredictionCard({ pred, action }: { pred: Prediction; action?: Re
           ) : <span>⚽</span>}
         </div>
 
-        {/* Match info */}
+        {/* Partido */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">
             {match.home_team} <span className="text-ucl-silver/40">{t("common.vs")}</span> {match.away_team}
           </p>
-          {(pred.first_goal_player || (match.status === "finished" && match.first_goal_player)) && (
-            <p className="text-xs text-ucl-silver/50 mt-1 truncate">
-              <span>⚽ </span>
-              {pred.first_goal_player ? (
-                <span className={goalResolved && goalHit ? "text-ucl-gold" : "text-ucl-silver/70"}>
-                  {pred.first_goal_player}
-                </span>
-              ) : (
-                <span className="italic">{t("myPredictions.noScorer")}</span>
-              )}
-              {match.status === "finished" && match.first_goal_player && (
-                <span className="text-ucl-silver/40">{t("myPredictions.realScorer", { name: match.first_goal_player })}</span>
-              )}
-              {goalResolved && pred.first_goal_player_id != null && (
-                <span className={goalHit ? "text-ucl-gold" : "text-ucl-silver/40"}> {goalHit ? "✓" : "✗"}</span>
-              )}
-            </p>
-          )}
         </div>
 
         {/* Prediction */}
@@ -97,6 +80,28 @@ export function PredictionCard({ pred, action }: { pred: Prediction; action?: Re
             : (action ?? <span className="text-xs text-ucl-silver/40 font-mono">—</span>)}
         </div>
       </div>
+
+      {/* Primer gol (pronosticado · real · acierto) en su propia fila a todo el
+          ancho y sin recortar, para que se vea completo también en contenedores
+          estrechos como el modal de la Tabla General. */}
+      {showGoal && (
+        <p className="text-xs text-ucl-silver/50 mt-2">
+          <span>⚽ </span>
+          {pred.first_goal_player ? (
+            <span className={goalResolved && goalHit ? "text-ucl-gold" : "text-ucl-silver/70"}>
+              {pred.first_goal_player}
+            </span>
+          ) : (
+            <span className="italic">{t("myPredictions.noScorer")}</span>
+          )}
+          {match.status === "finished" && match.first_goal_player && (
+            <span className="text-ucl-silver/40">{t("myPredictions.realScorer", { name: match.first_goal_player })}</span>
+          )}
+          {goalResolved && pred.first_goal_player_id != null && (
+            <span className={goalHit ? "text-ucl-gold" : "text-ucl-silver/40"}> {goalHit ? "✓" : "✗"}</span>
+          )}
+        </p>
+      )}
     </div>
   );
 }
