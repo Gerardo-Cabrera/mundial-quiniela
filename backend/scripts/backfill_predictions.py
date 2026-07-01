@@ -48,6 +48,15 @@ _DATE_RE = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
 _SCORER_PREFIX = re.compile(r"^\s*(primer\s+gol|gol)\s*:?\s*", re.IGNORECASE)
 # Claves de equipo más largas primero, para que "corea del sur" gane a "corea".
 _TEAM_KEYS = sorted(TEAM_ES_EN, key=len, reverse=True)
+# Partículas de nombre (van, de, al, …): las comparten muchos apellidos, así que por sí
+# solas NO identifican al goleador. No puntúan al resolver, y un "rabo" inline que es
+# solo partícula ("Canadá 2 de") no cuenta como goleador. Así un alias como
+# "van Dijk"/"Al Juwayr" no resuelve a otro jugador por compartir "van"/"al" cuando el
+# buscado no está en la plantilla: sin token distintivo, best=0 y se reporta.
+_NAME_PARTICLES = frozenset({
+    "al", "van", "von", "de", "der", "den", "da", "do", "dos", "del",
+    "di", "la", "le", "el", "bin", "ben", "ibn",
+})
 
 
 def _strip_accents(s: str) -> str:
@@ -103,7 +112,12 @@ def _inline_scorer(line: str) -> str | None:
     if not nums:
         return None
     tail = line[nums[-1].end():]
-    return None if _find_teams(tail) else _clean_scorer(tail)
+    if _find_teams(tail):
+        return None
+    scorer = _clean_scorer(tail)
+    if scorer and all(t in _NAME_PARTICLES for t in _tokens(scorer)):
+        return None  # rabo de solo partículas: deja leer "Primer gol: …" de abajo
+    return scorer
 
 
 def _tokens(s: str) -> list[str]:
@@ -241,10 +255,13 @@ def _extract_predictions(lines, index, note_date, report, who):
 
 
 def _match_score(scorer_tokens: list[str], player_name: str) -> int:
-    """Coincidencia por tokens: +2 token exacto, +1 token muy parecido (typos)."""
+    """Coincidencia por tokens: +2 token exacto, +1 token muy parecido (typos). Las
+    partículas no puntúan: por sí solas no distinguen a un jugador de otro."""
     pt = _tokens(player_name)
     s = 0
     for st in scorer_tokens:
+        if st in _NAME_PARTICLES:
+            continue
         if st in pt:
             s += 2
         elif any(difflib.SequenceMatcher(None, st, p).ratio() >= 0.8 for p in pt):
