@@ -13,6 +13,7 @@ from app.routers import (
     matches_router,
     predictions_router,
     leaderboard_router,
+    matchdays_router,
     config_router,
 )
 from app.services.scheduler import start_scheduler, stop_scheduler
@@ -59,6 +60,7 @@ app.include_router(auth_router,        prefix="/api")
 app.include_router(matches_router,     prefix="/api")
 app.include_router(predictions_router, prefix="/api")
 app.include_router(leaderboard_router, prefix="/api")
+app.include_router(matchdays_router,   prefix="/api")
 app.include_router(config_router,      prefix="/api")
 
 
