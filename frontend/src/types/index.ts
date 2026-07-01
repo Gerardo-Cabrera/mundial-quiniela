@@ -72,6 +72,27 @@ export interface Token {
   user: User;
 }
 
+// ── JORNADA / MVPs ──────────────────────────────────────────────────────────
+export interface MatchdayUserPoints {
+  user_id: number;
+  team_name: string;
+  points: number;
+}
+export interface MatchdayEntry {
+  date: string;                 // "yyyy-MM-dd" (día en zona del torneo)
+  entries: MatchdayUserPoints[]; // desc por puntos
+  mvp_points: number;
+  mvps: string[];               // equipo(s) MVP del día; vacío si nadie puntuó
+}
+export interface MvpRankEntry {
+  team_name: string;
+  count: number;
+}
+export interface MatchdaysSummary {
+  days: MatchdayEntry[];        // cronológico ascendente
+  mvp_ranking: MvpRankEntry[];  // desc por count
+}
+
 // Las etiquetas visibles de fases y estados viven en los archivos de traducción
 // (`i18n/locales/*.json`, claves `phase.*` / `status.*`), no aquí.
 

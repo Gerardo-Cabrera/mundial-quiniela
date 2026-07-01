@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { matchesApi, predictionsApi, leaderboardApi, configApi } from "@/api";
+import { matchesApi, predictionsApi, leaderboardApi, matchdaysApi, configApi } from "@/api";
 import type { MatchPhase, MatchStatus } from "@/types";
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -79,4 +79,14 @@ export const useLeaderboard = () =>
     queryKey: ["leaderboard"],
     queryFn:  leaderboardApi.get,
     refetchInterval: 60_000, // refresca cada minuto (el backend puntúa al instante tras el FT; el timer de 30 min es respaldo)
+  });
+
+// ── JORNADA / MVPs ──────────────────────────────────────────────────────────────
+
+// Un solo endpoint alimenta ambas vistas (puntos por jornada + MVPs).
+export const useMatchdays = () =>
+  useQuery({
+    queryKey: ["matchdays"],
+    queryFn:  matchdaysApi.get,
+    refetchInterval: 60_000,
   });
