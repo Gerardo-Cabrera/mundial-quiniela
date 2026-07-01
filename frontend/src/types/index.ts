@@ -60,6 +60,7 @@ export interface Prediction {
 
 export interface LeaderboardEntry {
   rank: number;
+  user_id: number;
   team_name: string;
   total_points: number;
   predictions_count: number;
