@@ -74,9 +74,9 @@
     "viewPredictions": "Ver los pronósticos de {{team}}"
   },
   "userPredictions": {
-    "subtitle": "Solo se muestran los partidos ya iniciados o finalizados.",
+    "subtitle": "Se muestran las jornadas que ya comenzaron (todos los partidos del día).",
     "emptyTitle": "Sin pronósticos visibles",
-    "emptyDescription": "Este participante aún no tiene pronósticos de partidos iniciados o finalizados."
+    "emptyDescription": "Este participante aún no tiene pronósticos de jornadas iniciadas."
   },
   "matches": {
     "title": "Partidos",
