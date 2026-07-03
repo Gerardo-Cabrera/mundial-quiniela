@@ -1,0 +1,8 @@
+# Linter del backend. Se selecciona pyflakes (reglas `F`): detecta imports/variables
+# sin uso, redefiniciones, f-strings mal formadas, etc. — justo lo que había que
+# limpiar a mano. Complementa a la suite de tests; el estilo cosmético no se fuerza.
+[lint]
+select = ["F"]
+# F821 (undefined-name) da falsos positivos con las forward-refs de SQLAlchemy en los
+# modelos (`Mapped["Prediction"]`, `"User"`…, resueltas en runtime): se excluye.
+ignore = ["F821"]

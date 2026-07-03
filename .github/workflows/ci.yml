@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [develop, main]
 
+# Mínimo privilegio: el CI solo lee el repo (no publica ni escribe nada).
+permissions:
+  contents: read
+
 # Cancela ejecuciones previas de la misma rama/PR si llega un push nuevo.
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,6 +19,7 @@ jobs:
   backend-tests:
     name: Backend · pytest
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
@@ -27,6 +32,11 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Instalar dependencias
         run: pip install -r requirements.txt
+      # Lint pyflakes (imports/variables sin uso, etc.); reglas en backend/ruff.toml.
+      - name: Lint (ruff)
+        run: |
+          pip install ruff==0.15.20
+          ruff check .
       # La suite usa SQLite en memoria: no necesita PostgreSQL ni servicios.
       - name: Tests
         run: pytest -q
@@ -34,6 +44,7 @@ jobs:
   frontend:
     name: Frontend · vitest + build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -46,6 +57,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Instalar dependencias
         run: npm ci
+      # ESLint: reglas que tsc no cubre (rules-of-hooks, exhaustive-deps).
+      - name: Lint (eslint)
+        run: npm run lint
       - name: Tests (vitest)
         run: npm run test
       - name: Build (type-check + bundle)
