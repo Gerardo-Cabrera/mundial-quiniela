@@ -5,11 +5,7 @@ from sqlalchemy import select, update
 from app.models.match import Match, MatchPhase, MatchStatus
 from app.models.prediction import Prediction
 from app.crud._upsert import upsert_by_key
-
-
-def _as_utc(dt: datetime) -> datetime:
-    """Normaliza a UTC-aware (SQLite devuelve naive; PostgreSQL, aware)."""
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+from app.core.time import as_utc
 
 
 class MatchCRUD:
@@ -41,7 +37,7 @@ class MatchCRUD:
         nocturnos no caigan en jornadas distintas. Acota la búsqueda a una ventana
         de ±1 día UTC (una jornada cabe de sobra) y filtra en Python → cross-DB
         (no usa funciones de zona horaria de SQL, que SQLite no tiene)."""
-        ref = _as_utc(match_date)
+        ref = as_utc(match_date)
         day = ref.astimezone(tz).date()
         result = await db.execute(
             select(Match.match_date).where(
@@ -50,8 +46,8 @@ class MatchCRUD:
             )
         )
         kickoffs = [
-            _as_utc(d) for (d,) in result.all()
-            if _as_utc(d).astimezone(tz).date() == day
+            as_utc(d) for (d,) in result.all()
+            if as_utc(d).astimezone(tz).date() == day
         ]
         return min(kickoffs) if kickoffs else ref
 
@@ -80,7 +76,7 @@ class MatchCRUD:
         jornada = día en `tz` (no UTC), como en el cierre de pronósticos."""
         now = datetime.now(timezone.utc)
         rows = [
-            (mid, _as_utc(d)) for mid, d in (
+            (mid, as_utc(d)) for mid, d in (
                 await db.execute(select(Match.id, Match.match_date))
             ).all()
         ]

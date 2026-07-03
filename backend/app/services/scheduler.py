@@ -17,6 +17,7 @@ from app.models.prediction import Prediction
 from app.services import football_api
 from app.services.scoring import calculate_match_points
 from app.crud import team_crud, match_crud, player_crud
+from app.core.time import as_utc
 from app.config import settings
 import logging
 
@@ -191,8 +192,7 @@ async def _players_are_fresh() -> bool:
         last = await player_crud.last_synced_at(db)
         if last is None:
             return False
-        if last.tzinfo is None:  # SQLite devuelve naive; asumir UTC
-            last = last.replace(tzinfo=timezone.utc)
+        last = as_utc(last)
         if datetime.now(timezone.utc) - last >= timedelta(hours=settings.SYNC_PLAYERS_HOURS):
             return False
         return await player_crud.all_teams_have_players(db)
