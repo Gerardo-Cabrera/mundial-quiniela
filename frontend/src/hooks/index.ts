@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { matchesApi, predictionsApi, leaderboardApi, matchdaysApi, configApi } from "@/api";
+import { matchesApi, predictionsApi, leaderboardApi, matchdaysApi, statsApi, configApi } from "@/api";
 import { useAuthStore } from "@/store/authStore";
 import { SESSION_IDLE_MS, LAST_ACTIVITY_KEY } from "@/config";
 import type { MatchPhase, MatchStatus } from "@/types";
@@ -94,6 +94,14 @@ export const useMatchdays = () =>
   useQuery({
     queryKey: ["matchdays"],
     queryFn:  matchdaysApi.get,
+    refetchInterval: 60_000,
+  });
+
+// Aciertos: primer gol + marcador exacto (un solo endpoint).
+export const useStats = () =>
+  useQuery({
+    queryKey: ["stats"],
+    queryFn:  statsApi.get,
     refetchInterval: 60_000,
   });
 

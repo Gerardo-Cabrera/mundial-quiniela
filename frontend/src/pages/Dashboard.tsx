@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Trophy, Target } from "lucide-react";
 import { useLeaderboard } from "@/hooks";
-import { Card, PageLoader, EmptyState } from "@/components/ui";
+import { Card, PageLoader, EmptyState, RANK_MEDAL } from "@/components/ui";
 import { UserPredictionsModal } from "@/components/UserPredictionsModal";
 import { useAuthStore } from "@/store/authStore";
 import { useTranslation } from "react-i18next";
@@ -86,7 +86,7 @@ export default function Dashboard() {
                   "font-display text-xl w-8 text-center shrink-0",
                   i < 3 ? RANK_STYLES[i] : "text-ucl-silver/50"
                 )}>
-                  {i < 3 ? ["🥇","🥈","🥉"][i] : entry.rank}
+                  {i < 3 ? RANK_MEDAL[i] : entry.rank}
                 </span>
 
                 {/* Team name */}

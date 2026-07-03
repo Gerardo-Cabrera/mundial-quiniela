@@ -41,6 +41,7 @@
     "results": "Resultados",
     "matchdays": "Jornada",
     "mvps": "MVPs",
+    "stats": "Aciertos",
     "predictions": "Pronósticos",
     "changePassword": "Cambiar contraseña",
     "logout": "Salir"
@@ -60,6 +61,19 @@
     "rankingCount": "{{n}}×",
     "emptyTitle": "Aún no hay MVPs",
     "emptyDescription": "El MVP de cada jornada aparecerá cuando haya partidos finalizados."
+  },
+  "stats": {
+    "title": "Aciertos",
+    "subtitle": "Primer gol y marcador exacto · Mundial FIFA 2026",
+    "firstGoalRanking": "Ranking de primer gol",
+    "firstGoalByMatch": "Primer gol por partido",
+    "topScore": "Marcador más repetido",
+    "exactRanking": "Ranking de marcador exacto",
+    "timesRepeated": "{{n}} veces",
+    "noOneHit": "nadie acertó",
+    "noHits": "Aún no hay aciertos.",
+    "emptyTitle": "Sin aciertos todavía",
+    "emptyDescription": "Los aciertos aparecerán cuando haya partidos finalizados y puntuados."
   },
   "dashboard": {
     "title": "Tabla General",

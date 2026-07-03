@@ -94,6 +94,30 @@ export interface MatchdaysSummary {
   mvp_ranking: MvpRankEntry[];  // desc por count
 }
 
+// ── ACIERTOS (Stats) ──────────────────────────────────────────────────────────
+export interface UserCount {
+  team_name: string;
+  count: number;
+}
+export interface FirstGoalMatch {
+  match_id: number;
+  home_team: string;
+  away_team: string;
+  match_date: string;
+  scorer: string | null;   // goleador real del primer gol
+  hitters: string[];       // equipos que lo acertaron
+}
+export interface ScoreCount {
+  score: string;           // "2-1"
+  count: number;
+}
+export interface StatsSummary {
+  first_goal_matches: FirstGoalMatch[];  // resueltos, más reciente primero
+  first_goal_ranking: UserCount[];        // aciertos de primer gol por usuario (desc)
+  top_scores: ScoreCount[];               // marcador(es) real(es) más repetido(s)
+  exact_ranking: UserCount[];             // aciertos de marcador exacto por usuario (desc)
+}
+
 // Las etiquetas visibles de fases y estados viven en los archivos de traducción
 // (`i18n/locales/*.json`, claves `phase.*` / `status.*`), no aquí.
 

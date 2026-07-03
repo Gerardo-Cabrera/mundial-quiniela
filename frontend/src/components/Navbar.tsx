@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Trophy, CalendarDays, Goal, ListChecks, CalendarRange, Crown, LogOut, KeyRound, User } from "lucide-react";
+import { Trophy, CalendarDays, Goal, ListChecks, CalendarRange, Crown, Target, LogOut, KeyRound, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { clsx } from "clsx";
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: "/results",     labelKey: "nav.results",     icon: Goal },
   { to: "/matchdays",   labelKey: "nav.matchdays",   icon: CalendarRange },
   { to: "/mvps",        labelKey: "nav.mvps",        icon: Crown },
+  { to: "/stats",       labelKey: "nav.stats",       icon: Target },
   { to: "/predictions", labelKey: "nav.predictions", icon: ListChecks },
 ];
 

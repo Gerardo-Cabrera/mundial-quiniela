@@ -108,6 +108,35 @@ export function PointsChip({ points }: { points: number }) {
   );
 }
 
+// ── RANKING LIST ──────────────────────────────────────────────────────────────
+
+export const RANK_MEDAL = ["🥇", "🥈", "🥉"];
+
+// Lista de ranking (medalla/posición + equipo + conteo). Fuente única de MVPs y de
+// los rankings de Aciertos. `renderCount` decide cómo se muestra el número (crown +
+// "N×", conteo simple, etc.).
+export function RankingList({ entries, renderCount }: {
+  entries: { team_name: string; count: number }[];
+  renderCount: (count: number) => ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      {entries.map((r, i) => (
+        <div key={r.team_name} className="flex items-center gap-4 px-3 py-2 rounded-lg hover:bg-ucl-blue/20">
+          <span className={clsx(
+            "font-display text-xl w-8 text-center shrink-0",
+            i >= 3 && "text-ucl-silver/50"
+          )}>
+            {i < 3 ? RANK_MEDAL[i] : i + 1}
+          </span>
+          <span className="flex-1 text-sm font-medium text-ucl-white truncate">{r.team_name}</span>
+          <span className="shrink-0">{renderCount(r.count)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── STATUS DOT ────────────────────────────────────────────────────────────────
 
 export function StatusDot({ status, elapsed }: { status: MatchStatus; elapsed?: number | null }) {
