@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Pencil } from "lucide-react";
 import type { Match, Prediction } from "@/types";
-import { isFirstGoalHit } from "@/types";
+import { isFirstGoalHit, isMatchPlayed } from "@/types";
 import { Badge, StatusDot, PointsChip } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
@@ -15,9 +15,8 @@ interface MatchCardProps {
 
 export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
   const { t } = useTranslation();
-  const isFinished  = match.status === "finished";
   const isScheduled = match.status === "scheduled";
-  const isPlayed    = isFinished || match.status === "live";
+  const isPlayed    = isMatchPlayed(match);
   const hasExact    = prediction &&
     prediction.predicted_home === match.home_score &&
     prediction.predicted_away === match.away_score;
@@ -61,7 +60,7 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
 
         {/* Score / VS */}
         <div className="flex flex-col items-center gap-1 min-w-[64px]">
-          {isFinished || match.status === "live" ? (
+          {isPlayed ? (
             <span className="font-display text-3xl text-ucl-white tracking-widest">
               {match.home_score} - {match.away_score}
             </span>

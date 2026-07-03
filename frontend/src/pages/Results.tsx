@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useMatches, useMyPredictions } from "@/hooks";
 import { MatchDayGrid } from "@/components/MatchDayGrid";
 import { PageLoader, EmptyState } from "@/components/ui";
-import { groupMatchesByDay } from "@/types";
+import { groupMatchesByDay, isMatchPlayed } from "@/types";
 import { useTranslation } from "react-i18next";
 
 export default function ResultsPage() {
@@ -15,9 +15,7 @@ export default function ResultsPage() {
   // Dentro de cada jornada, un partido EN VIVO se muestra primero hasta que
   // finaliza, al terminar vuelve a su posición cronológica.
   const days = useMemo(() => {
-    const played = (matches ?? []).filter(
-      (m) => m.status === "finished" || m.status === "live"
-    );
+    const played = (matches ?? []).filter(isMatchPlayed);
     return groupMatchesByDay(played).reverse().map((day) => ({
       ...day,
       matches: [...day.matches].sort(
