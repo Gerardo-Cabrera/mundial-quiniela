@@ -96,8 +96,9 @@
   "matches": {
     "title": "Partidos",
     "subtitle": "Por pronosticar · Mundial FIFA 2026",
+    "closed": "Cerrada",
     "emptyTitle": "Sin partidos por pronosticar",
-    "emptyDescription": "No hay jornadas abiertas para los filtros seleccionados. Mira los resultados en la sección Resultados."
+    "emptyDescription": "No quedan partidos por jugar para los filtros seleccionados. Mira los resultados en la sección Resultados."
   },
   "results": {
     "title": "Resultados",
