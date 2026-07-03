@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -72,6 +72,20 @@ class MatchCRUD:
             .limit(1)
         )
         return result.first() is not None
+
+    async def get_started_day_match_ids(self, db: AsyncSession, tz: ZoneInfo) -> set[int]:
+        """IDs de los partidos de toda jornada ya INICIADA (su primer partido, en `tz`,
+        ya arrancó). Revela el día completo aunque algún partido no haya empezado: los
+        pronósticos del día cierran 1 h antes del primero, así que ya no cambian. La
+        jornada = día en `tz` (no UTC), como en el cierre de pronósticos."""
+        now = datetime.now(timezone.utc)
+        rows = [
+            (mid, _as_utc(d)) for mid, d in (
+                await db.execute(select(Match.id, Match.match_date))
+            ).all()
+        ]
+        started_days: set[date] = {d.astimezone(tz).date() for _, d in rows if d <= now}
+        return {mid for mid, d in rows if d.astimezone(tz).date() in started_days}
 
     async def upsert_many(
         self, db: AsyncSession, fixtures: list[dict]

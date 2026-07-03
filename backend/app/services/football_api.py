@@ -189,6 +189,7 @@ def parse_fixture(fixture_data: dict) -> dict:
         "away_team_logo": teams["away"]["logo"],
         "home_score":     goals["home"],
         "away_score":     goals["away"],
+        "elapsed":        f["status"].get("elapsed"),
         "phase":          phase,
         "status":         status,
         "match_date":     match_date,

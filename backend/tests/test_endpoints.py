@@ -258,33 +258,39 @@ async def test_leaderboard_ties_share_rank(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_user_predictions_only_started_matches(auth_client: AsyncClient):
-    """Ver los pronósticos de un participante desde la Tabla General expone solo
-    los de partidos ya iniciados/finalizados, nunca los de partidos por empezar."""
+async def test_user_predictions_reveal_by_started_day(auth_client: AsyncClient):
+    """Ver los pronósticos de otro participante se revela por JORNADA (día): una vez
+    que su primer partido comenzó, se ven TODOS los pronósticos de ese día (aunque
+    alguno siga SCHEDULED); las jornadas no iniciadas no se muestran."""
     from app.models.prediction import Prediction
 
-    finished_id = await _create_match(
+    # Jornada ya iniciada (17/06): un partido finalizado y otro del mismo día aún
+    # SCHEDULED. Fechas fijas pasadas → determinista (no depende de la hora actual).
+    started_finished = await _create_match(
         api_fixture_id=2001, status=MatchStatus.FINISHED,
-        match_date=datetime.now(timezone.utc) - timedelta(hours=2),
+        match_date=datetime(2026, 6, 17, 12, tzinfo=timezone.utc),
     )
-    upcoming_id = await _create_match(
+    started_scheduled = await _create_match(
         api_fixture_id=2002, status=MatchStatus.SCHEDULED,
+        match_date=datetime(2026, 6, 17, 20, tzinfo=timezone.utc),
+    )
+    # Jornada futura (no iniciada): oculta.
+    future_scheduled = await _create_match(
+        api_fixture_id=2003, status=MatchStatus.SCHEDULED,
         match_date=datetime.now(timezone.utc) + timedelta(days=1),
     )
     async with TestSessionLocal() as session:
         session.add_all([
-            Prediction(user_id=1, match_id=finished_id, predicted_home=1, predicted_away=0),
-            Prediction(user_id=1, match_id=upcoming_id, predicted_home=3, predicted_away=3),
+            Prediction(user_id=1, match_id=started_finished, predicted_home=1, predicted_away=0),
+            Prediction(user_id=1, match_id=started_scheduled, predicted_home=2, predicted_away=2),
+            Prediction(user_id=1, match_id=future_scheduled, predicted_home=3, predicted_away=3),
         ])
         await session.commit()
 
-    # user_id viaja en el leaderboard (la Tabla General lo usa para el enlace).
-    board = (await auth_client.get("/api/leaderboard/")).json()
-    me = next(e for e in board if e["team_name"] == "Jax FC")
-    assert me["user_id"] == 1
-
-    data = (await auth_client.get(f"/api/predictions/user/{me['user_id']}")).json()
-    assert [p["match_id"] for p in data] == [finished_id]
+    data = (await auth_client.get("/api/predictions/user/1")).json()
+    ids = {p["match_id"] for p in data}
+    assert ids == {started_finished, started_scheduled}  # el día iniciado, completo
+    assert future_scheduled not in ids                    # jornada no iniciada, oculta
 
 
 @pytest.mark.asyncio

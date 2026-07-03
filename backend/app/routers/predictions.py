@@ -61,10 +61,12 @@ async def get_user_started_predictions(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """Pronósticos de otro participante para verlos desde la Tabla General. Solo
-    incluye partidos ya **iniciados o finalizados**: nunca revela pronósticos de
-    partidos que aún no empiezan."""
-    return await prediction_crud.get_by_user(db, user_id, started_only=True)
+    """Pronósticos de otro participante para verlos desde la Tabla General. Se
+    revelan por **jornada** (día): una vez que su primer partido comienza, se ven
+    los pronósticos de TODOS los partidos de ese día. Las jornadas no iniciadas 
+    no se muestran."""
+    visible = await match_crud.get_started_day_match_ids(db, _TOURNAMENT_TZ)
+    return await prediction_crud.get_by_user(db, user_id, only_match_ids=visible)
 
 
 @router.post("/", response_model=PredictionOut, status_code=201)

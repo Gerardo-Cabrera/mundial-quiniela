@@ -38,7 +38,7 @@ export default function ResultsPage() {
       ) : !days.length ? (
         <EmptyState icon="📊" title={t("results.emptyTitle")} description={t("results.emptyDescription")} />
       ) : (
-        <MatchDayGrid days={days} predictions={predictions} />
+        <MatchDayGrid days={days} predictions={predictions} dense />
       )}
     </div>
   );

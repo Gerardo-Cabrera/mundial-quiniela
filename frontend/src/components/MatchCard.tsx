@@ -44,7 +44,7 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
         <Badge variant={match.phase === "group_stage" ? "blue" : "gold"}>
           {t(`phase.${match.phase}`)}
         </Badge>
-        <StatusDot status={match.status} />
+        <StatusDot status={match.status} elapsed={match.elapsed} />
       </div>
 
       {/* Teams + Score */}
