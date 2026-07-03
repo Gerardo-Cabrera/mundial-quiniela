@@ -15,7 +15,7 @@ Aplicación de quiniela basada en el Mundial FIFA 2026 con sistema de puntuació
 | ORM | SQLAlchemy 2.0 (async) |
 | Migraciones | Alembic |
 | Scheduler | APScheduler (sync datos del Mundial) |
-| API Fútbol | API-Football (RapidAPI) |
+| API Fútbol | API-Football (api-sports / RapidAPI) |
 
 ## Estructura
 
