@@ -66,6 +66,16 @@ export function Spinner({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   );
 }
 
+// Estado de carga a nivel de página: centra el spinner grande. Fuente única para
+// no repetir el mismo wrapper en cada vista.
+export function PageLoader() {
+  return (
+    <div className="flex justify-center py-16">
+      <Spinner size="lg" />
+    </div>
+  );
+}
+
 // ── EMPTY STATE ───────────────────────────────────────────────────────────────
 
 export function EmptyState({ icon, title, description }: {

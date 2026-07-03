@@ -1,5 +1,5 @@
 import { useMyPredictions, useDeletePrediction } from "@/hooks";
-import { Spinner, EmptyState } from "@/components/ui";
+import { PageLoader, EmptyState } from "@/components/ui";
 import { PredictionCard } from "@/components/PredictionCard";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -28,7 +28,7 @@ export default function MyPredictionsPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <PageLoader />
       ) : !predictions?.length ? (
         <EmptyState
           icon="🎯"

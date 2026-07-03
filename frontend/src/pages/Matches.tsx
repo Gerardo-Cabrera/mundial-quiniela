@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMatches, useMyPredictions } from "@/hooks";
 import { MatchDayGrid } from "@/components/MatchDayGrid";
 import { PredictionModal } from "@/components/PredictionModal";
-import { Spinner, EmptyState } from "@/components/ui";
+import { PageLoader, EmptyState } from "@/components/ui";
 import type { Match, MatchPhase } from "@/types";
 import { groupMatchesByDay } from "@/types";
 import { useTranslation } from "react-i18next";
@@ -64,7 +64,7 @@ export default function MatchesPage() {
 
       {/* Jornadas abiertas (un bloque por día, partidos en filas de 4) */}
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <PageLoader />
       ) : !openDays.length ? (
         <EmptyState icon="✅" title={t("matches.emptyTitle")} description={t("matches.emptyDescription")} />
       ) : (

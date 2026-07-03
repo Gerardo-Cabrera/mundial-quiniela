@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Trophy, Target } from "lucide-react";
 import { useLeaderboard } from "@/hooks";
-import { Card, Spinner, EmptyState } from "@/components/ui";
+import { Card, PageLoader, EmptyState } from "@/components/ui";
 import { UserPredictionsModal } from "@/components/UserPredictionsModal";
 import { useAuthStore } from "@/store/authStore";
 import { useTranslation } from "react-i18next";
@@ -21,11 +21,7 @@ export default function Dashboard() {
   const [selected, setSelected] = useState<LeaderboardEntry | null>(null);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!leaderboard?.length) {
