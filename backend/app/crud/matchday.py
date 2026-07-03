@@ -1,10 +1,11 @@
 from collections import defaultdict
-from datetime import date, timezone, tzinfo
+from datetime import date, tzinfo
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.match import Match
 from app.models.prediction import Prediction
 from app.models.user import User
+from app.core.time import as_utc
 from app.schemas.matchday import (
     MatchdayEntry, MatchdayUserPoints, MatchdaysSummary, MvpRankEntry,
 )
@@ -24,9 +25,7 @@ class MatchdayCRUD:
         # día -> user_id -> [team_name, puntos acumulados ese día]
         by_day: dict[date, dict[int, list]] = defaultdict(dict)
         for user_id, team_name, match_date, points in result.all():
-            if match_date.tzinfo is None:          # SQLite devuelve naive; asume UTC
-                match_date = match_date.replace(tzinfo=timezone.utc)
-            day = match_date.astimezone(tz).date()
+            day = as_utc(match_date).astimezone(tz).date()
             acc = by_day[day].setdefault(user_id, [team_name, 0])
             acc[1] += points
 
