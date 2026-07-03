@@ -12,11 +12,18 @@ export default function ResultsPage() {
 
   // Partidos con resultado (en vivo o finalizados), por día y con la jornada
   // más reciente primero. Reutiliza el mismo agrupado que la vista de Partidos.
+  // Dentro de cada jornada, un partido EN VIVO se muestra primero hasta que
+  // finaliza, al terminar vuelve a su posición cronológica.
   const days = useMemo(() => {
     const played = (matches ?? []).filter(
       (m) => m.status === "finished" || m.status === "live"
     );
-    return groupMatchesByDay(played).reverse();
+    return groupMatchesByDay(played).reverse().map((day) => ({
+      ...day,
+      matches: [...day.matches].sort(
+        (a, b) => Number(b.status === "live") - Number(a.status === "live")
+      ),
+    }));
   }, [matches]);
 
   return (
