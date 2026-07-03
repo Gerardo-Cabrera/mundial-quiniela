@@ -55,10 +55,11 @@ def _raw_fixture(
     status: str = "NS",
     round_: str = "Group Stage - 1",
     date: str = "2026-06-11T18:00:00+00:00",
+    elapsed: int | None = None,
 ) -> dict:
     """Construye un fixture en el formato crudo de API-Football (para parse_fixture)."""
     return {
-        "fixture": {"id": fixture_id, "status": {"short": status}, "date": date},
+        "fixture": {"id": fixture_id, "status": {"short": status, "elapsed": elapsed}, "date": date},
         "teams": {
             "home": {"name": home, "logo": None},
             "away": {"name": away, "logo": None},
@@ -527,6 +528,12 @@ def test_parse_fixture_no_fallback_within_window():
     raw = _raw_fixture(9003, home_score=0, away_score=0, status="2H",
                        round_="Group Stage - 1", date=within)
     assert football_api.parse_fixture(raw)["status"] == MatchStatus.LIVE
+
+
+def test_parse_fixture_captures_elapsed():
+    """El minuto en vivo (status.elapsed) se propaga; None si la API no lo envía."""
+    assert football_api.parse_fixture(_raw_fixture(9004, status="2H", elapsed=67))["elapsed"] == 67
+    assert football_api.parse_fixture(_raw_fixture(9005, status="NS"))["elapsed"] is None
 
 
 @pytest.mark.asyncio

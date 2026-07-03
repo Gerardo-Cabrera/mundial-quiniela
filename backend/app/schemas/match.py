@@ -13,6 +13,7 @@ class MatchOut(BaseModel):
     away_team_logo: Optional[str]
     home_score: Optional[int]
     away_score: Optional[int]
+    elapsed: Optional[int]
     first_goal_team: Optional[str]
     first_goal_player_id: Optional[int]
     first_goal_player: Optional[str]

@@ -110,12 +110,13 @@ export function PointsChip({ points }: { points: number }) {
 
 // ── STATUS DOT ────────────────────────────────────────────────────────────────
 
-export function StatusDot({ status }: { status: MatchStatus }) {
+export function StatusDot({ status, elapsed }: { status: MatchStatus; elapsed?: number | null }) {
   const { t } = useTranslation();
   if (status === "live") {
     return (
       <span className="flex items-center gap-1.5 text-red-400 text-xs font-semibold">
-        <span className="live-dot" /> {t("status.liveBadge")}
+        {/* Minuto en vivo (status.elapsed de la API): se actualiza a la cadencia del sync. */}
+        <span className="live-dot" /> {t("status.liveBadge")}{elapsed != null && ` · ${elapsed}'`}
       </span>
     );
   }

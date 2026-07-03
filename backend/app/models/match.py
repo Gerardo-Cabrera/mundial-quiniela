@@ -36,6 +36,8 @@ class Match(Base):
 
     home_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     away_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Minuto de juego en vivo (API-Football status.elapsed); None fuera de juego.
+    elapsed: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Primer gol del partido (resuelto por el job de eventos). `first_goal_team`
     # es el equipo del goleador (informativo y marca de "ya resuelto");
     # `first_goal_player_id`/`first_goal_player` son el goleador real, que es
