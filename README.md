@@ -111,14 +111,16 @@ echo "POSTGRES_PASSWORD=una-contraseña-fuerte" > .env
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-## Tests
+## Tests y lint
+
+El CI (GitHub Actions) corre lint + tests + build en cada push/PR a `develop`/`main`.
 
 ```bash
-# Backend (pytest, SQLite en memoria)
-cd backend && pytest
+# Backend: lint (ruff) + tests (pytest, SQLite en memoria)
+cd backend && ruff check . && pytest   # ruff: pip install ruff
 
-# Frontend (vitest — lógica de dominio pura)
-cd frontend && npm run test
+# Frontend: lint (eslint) + tests (vitest) + build
+cd frontend && npm run lint && npm run test && npm run build
 ```
 
 ## Sistema de Puntuación
