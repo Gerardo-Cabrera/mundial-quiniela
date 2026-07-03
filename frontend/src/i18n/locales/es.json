@@ -20,6 +20,7 @@
     "password": "Contraseña",
     "submitLogin": "Entrar a la Quiniela",
     "genericError": "Ocurrió un error. Intenta de nuevo.",
+    "sessionExpired": "Tu sesión se cerró por inactividad.",
     "changePassword": {
       "title": "Cambiar contraseña",
       "forcedNotice": "Por seguridad, cambia tu contraseña inicial antes de continuar.",
