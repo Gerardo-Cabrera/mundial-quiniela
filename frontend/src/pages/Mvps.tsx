@@ -33,7 +33,7 @@ export default function MvpsPage() {
         <EmptyState icon="👑" title={t("mvps.emptyTitle")} description={t("mvps.emptyDescription")} />
       ) : (
         <>
-          {/* MVP de cada jornada (orden cronológico) */}
+          {/* MVP de cada jornada */}
           <Card>
             <h2 className="font-display text-2xl mb-4 flex items-center gap-2">
               <Crown size={18} className="text-ucl-gold" /> {t("mvps.chronoTitle")}
