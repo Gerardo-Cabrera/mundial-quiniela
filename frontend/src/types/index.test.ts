@@ -11,6 +11,8 @@ function match(id: number, match_date: string): Match {
     away_team_logo: null,
     home_score: null,
     away_score: null,
+    penalty_home: null,
+    penalty_away: null,
     elapsed: null,
     first_goal_team: null,
     first_goal_player_id: null,

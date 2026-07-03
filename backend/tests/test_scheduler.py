@@ -56,6 +56,8 @@ def _raw_fixture(
     round_: str = "Group Stage - 1",
     date: str = "2026-06-11T18:00:00+00:00",
     elapsed: int | None = None,
+    pen_home: int | None = None,
+    pen_away: int | None = None,
 ) -> dict:
     """Construye un fixture en el formato crudo de API-Football (para parse_fixture)."""
     return {
@@ -65,6 +67,7 @@ def _raw_fixture(
             "away": {"name": away, "logo": None},
         },
         "goals": {"home": home_score, "away": away_score},
+        "score": {"penalty": {"home": pen_home, "away": pen_away}},
         "league": {"round": round_},
     }
 
@@ -534,6 +537,16 @@ def test_parse_fixture_captures_elapsed():
     """El minuto en vivo (status.elapsed) se propaga; None si la API no lo envía."""
     assert football_api.parse_fixture(_raw_fixture(9004, status="2H", elapsed=67))["elapsed"] == 67
     assert football_api.parse_fixture(_raw_fixture(9005, status="NS"))["elapsed"] is None
+
+
+def test_parse_fixture_captures_penalties():
+    """La tanda de penales (score.penalty) se propaga; None si no hubo tanda."""
+    pen = football_api.parse_fixture(
+        _raw_fixture(9006, home_score=1, away_score=1, status="PEN", pen_home=4, pen_away=3)
+    )
+    assert (pen["penalty_home"], pen["penalty_away"]) == (4, 3)
+    no_pen = football_api.parse_fixture(_raw_fixture(9007, home_score=2, away_score=0, status="FT"))
+    assert (no_pen["penalty_home"], no_pen["penalty_away"]) == (None, None)
 
 
 @pytest.mark.asyncio

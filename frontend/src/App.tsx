@@ -17,6 +17,7 @@ import ResultsPage        from "@/pages/Results";
 import MyPredictionsPage  from "@/pages/MyPredictions";
 import JornadaPage        from "@/pages/Jornada";
 import MvpsPage           from "@/pages/Mvps";
+import AciertosPage       from "@/pages/Aciertos";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,7 @@ function ProtectedLayout() {
             <Route path="/results"         element={<ResultsPage />} />
             <Route path="/matchdays"       element={<JornadaPage />} />
             <Route path="/mvps"            element={<MvpsPage />} />
+            <Route path="/stats"           element={<AciertosPage />} />
             <Route path="/predictions"     element={<MyPredictionsPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
           </Routes>

@@ -163,6 +163,8 @@ def parse_fixture(fixture_data: dict) -> dict:
     teams = fixture_data["teams"]
     goals = fixture_data["goals"]
     league = fixture_data["league"]
+    # Tanda de penales (solo en eliminatorias empatadas): None fuera de ese caso.
+    penalty = (fixture_data.get("score") or {}).get("penalty") or {}
 
     raw_round  = league.get("round", "Group Stage")
     phase      = _resolve_phase(raw_round)
@@ -189,6 +191,8 @@ def parse_fixture(fixture_data: dict) -> dict:
         "away_team_logo": teams["away"]["logo"],
         "home_score":     goals["home"],
         "away_score":     goals["away"],
+        "penalty_home":   penalty.get("home"),
+        "penalty_away":   penalty.get("away"),
         "elapsed":        f["status"].get("elapsed"),
         "phase":          phase,
         "status":         status,

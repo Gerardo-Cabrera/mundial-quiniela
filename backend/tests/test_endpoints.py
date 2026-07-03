@@ -349,6 +349,54 @@ async def test_matchdays_summary_mvp_and_ranking(auth_client: AsyncClient):
     ]
 
 
+@pytest.mark.asyncio
+async def test_stats_first_goal_and_exact(auth_client: AsyncClient):
+    """Aciertos de primer gol (por partido + ranking), marcador más repetido y ranking
+    de marcador exacto, sobre predicciones ya calculadas de partidos finalizados."""
+    from app.models.prediction import Prediction
+
+    await auth_client.post("/api/auth/register", json={
+        "team_name": "Genkidama F.C", "email": "g3@test.com", "password": "pass1234",
+    })  # user 2 (user 1 = Jax FC)
+
+    m1 = await _create_match(api_fixture_id=4001, status=MatchStatus.FINISHED,
+        home_score=2, away_score=1, first_goal_player_id=10, first_goal_player="L. Messi",
+        match_date=datetime(2026, 6, 17, 20, tzinfo=timezone.utc))
+    m2 = await _create_match(api_fixture_id=4002, status=MatchStatus.FINISHED,
+        home_score=2, away_score=1, first_goal_player_id=20, first_goal_player="Neymar",
+        match_date=datetime(2026, 6, 17, 18, tzinfo=timezone.utc))
+    m3 = await _create_match(api_fixture_id=4003, status=MatchStatus.FINISHED,
+        home_score=1, away_score=0, first_goal_player_id=10, first_goal_player="L. Messi",
+        match_date=datetime(2026, 6, 16, 18, tzinfo=timezone.utc))
+    async with TestSessionLocal() as session:
+        session.add_all([
+            Prediction(user_id=1, match_id=m1, predicted_home=2, predicted_away=1, first_goal_player_id=10, is_calculated=True),
+            Prediction(user_id=1, match_id=m2, predicted_home=2, predicted_away=1, first_goal_player_id=99, is_calculated=True),
+            Prediction(user_id=1, match_id=m3, predicted_home=0, predicted_away=0, first_goal_player_id=10, is_calculated=True),
+            Prediction(user_id=2, match_id=m1, predicted_home=2, predicted_away=1, first_goal_player_id=99, is_calculated=True),
+            Prediction(user_id=2, match_id=m2, predicted_home=1, predicted_away=1, first_goal_player_id=20, is_calculated=True),
+        ])
+        await session.commit()
+
+    data = (await auth_client.get("/api/stats/")).json()
+
+    # user1: exacto en m1 y m2 (2); user2: exacto solo en m1 (1).
+    assert data["exact_ranking"] == [
+        {"team_name": "Jax FC", "count": 2},
+        {"team_name": "Genkidama F.C", "count": 1},
+    ]
+    # user1: primer gol en m1 y m3 (2); user2: primer gol en m2 (1).
+    assert data["first_goal_ranking"] == [
+        {"team_name": "Jax FC", "count": 2},
+        {"team_name": "Genkidama F.C", "count": 1},
+    ]
+    # Marcador real más repetido: 2-1 (m1 y m2).
+    assert data["top_scores"] == [{"score": "2-1", "count": 2}]
+    # Quién acertó el primer gol de cada partido.
+    hitters = {fg["match_id"]: fg["hitters"] for fg in data["first_goal_matches"]}
+    assert hitters == {m1: ["Jax FC"], m2: ["Genkidama F.C"], m3: ["Jax FC"]}
+
+
 # ── PREDICTIONS VALIDATION ────────────────────────────────────────────────────
 
 

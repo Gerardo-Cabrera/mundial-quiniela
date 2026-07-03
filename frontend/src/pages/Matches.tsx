@@ -19,21 +19,23 @@ export default function MatchesPage() {
   const [selected, setSelected] = useState<Match | null>(null);
   const { t } = useTranslation();
 
-  // Todos los partidos del filtro (no solo "scheduled"): la jornada cierra según
-  // el PRIMER partido del día, que puede estar ya live/finished. Filtrar a
-  // "scheduled" ocultaría ese primer partido y el cierre se calcularía con uno
-  // posterior (jornada falsamente "abierta"). Las jornadas abiertas solo contienen
-  // partidos futuros, así que todos son pronosticables.
+  // Se piden TODOS los partidos del filtro (no solo "scheduled") para que
+  // groupMatchesByDay calcule `open`/`firstKickoff` con el PRIMER partido real del
+  // día (agrupar solo scheduled daría una jornada falsamente "abierta", regresión §22).
   const { data: matches, isLoading } = useMatches({
     phase: phase !== "all" ? phase : undefined,
   });
 
   const { data: predictions } = useMyPredictions();
 
-  // Agrupa por día y deja solo las jornadas aún abiertas (las cerradas no se
-  // pueden pronosticar; sus resultados se ven en la sección "Resultados").
-  const openDays = useMemo(
-    () => groupMatchesByDay(matches ?? []).filter((d) => d.open),
+  // Muestra los partidos aún por jugar (scheduled) agrupados por día, incluidas las
+  // jornadas ya cerradas/iniciadas: siguen visibles pero NO editables (MatchDayGrid
+  // solo pasa `onPredict` a las abiertas). Los ya jugados viven en "Resultados".
+  const days = useMemo(
+    () =>
+      groupMatchesByDay(matches ?? [])
+        .map((d) => ({ ...d, matches: d.matches.filter((m) => m.status === "scheduled") }))
+        .filter((d) => d.matches.length > 0),
     [matches]
   );
 
@@ -62,13 +64,13 @@ export default function MatchesPage() {
         ))}
       </div>
 
-      {/* Jornadas abiertas (un bloque por día, partidos en filas de 4) */}
+      {/* Un bloque por día; las jornadas cerradas se muestran no editables */}
       {isLoading ? (
         <PageLoader />
-      ) : !openDays.length ? (
+      ) : !days.length ? (
         <EmptyState icon="✅" title={t("matches.emptyTitle")} description={t("matches.emptyDescription")} />
       ) : (
-        <MatchDayGrid days={openDays} predictions={predictions} onPredict={setSelected} />
+        <MatchDayGrid days={days} predictions={predictions} onPredict={setSelected} />
       )}
 
       {selected && (

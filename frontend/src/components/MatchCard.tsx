@@ -67,6 +67,12 @@ export function MatchCard({ match, prediction, onPredict }: MatchCardProps) {
           ) : (
             <span className="font-display text-xl text-ucl-silver/50">{t("matchCard.vs")}</span>
           )}
+          {/* Definición por penales (solo si el partido se decidió en la tanda). */}
+          {match.penalty_home != null && match.penalty_away != null && (
+            <span className="text-[10px] text-ucl-gold/80 font-mono leading-none whitespace-nowrap">
+              {t("matchCard.penalties", { home: match.penalty_home, away: match.penalty_away })}
+            </span>
+          )}
           <span className="text-xs text-ucl-silver/50 font-mono">
             {format(new Date(match.match_date), "d MMM · HH:mm", { locale: es })}
           </span>

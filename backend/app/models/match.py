@@ -36,6 +36,10 @@ class Match(Base):
 
     home_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     away_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Definición por penales (score.penalty de API-Football); None si no hubo tanda.
+    # El marcador (home/away_score) mantiene el resultado del juego (empate).
+    penalty_home: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    penalty_away: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Minuto de juego en vivo (API-Football status.elapsed); None fuera de juego.
     elapsed: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Primer gol del partido (resuelto por el job de eventos). `first_goal_team`
