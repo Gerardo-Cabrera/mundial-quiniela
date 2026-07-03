@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { isFirstGoalHit, type Prediction } from "@/types";
+import { isFirstGoalHit, isMatchPlayed, type Prediction } from "@/types";
 import { PointsChip, Badge } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
@@ -23,7 +23,7 @@ export function PredictionCard({ pred, action }: { pred: Prediction; action?: Re
   // El primer gol es definitivo desde que el partido está EN VIVO: el backend lo
   // resuelve para LIVE y FINISHED (mismo criterio que MatchCard). Los puntos, en
   // cambio, se calculan al finalizar (por eso PointsChip sigue atado a is_calculated).
-  const isPlayed     = match.status === "live" || match.status === "finished";
+  const isPlayed     = isMatchPlayed(match);
   const goalResolved = match.first_goal_player_id != null;
   const goalHit      = isFirstGoalHit(pred, match);
   const showGoal     = pred.first_goal_player || (isPlayed && match.first_goal_player);

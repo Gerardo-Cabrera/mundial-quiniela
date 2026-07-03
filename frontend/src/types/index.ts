@@ -114,6 +114,11 @@ export function isFirstGoalHit(
   );
 }
 
+// Un partido "jugado" = en vivo o finalizado: ya empezó y tiene marcador/primer gol.
+// Concepto único usado por las tarjetas y la vista de Resultados.
+export const isMatchPlayed = (match: Pick<Match, "status">): boolean =>
+  match.status === "live" || match.status === "finished";
+
 /**
  * Convierte una fecha "yyyy-MM-dd" a un Date local al mediodía. El mediodía evita
  * el corrimiento de día que produciría parsear la fecha "pelada" como UTC.
