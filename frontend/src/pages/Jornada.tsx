@@ -1,20 +1,18 @@
 import { useMatchdays } from "@/hooks";
-import { Card, Spinner, EmptyState, PointsChip } from "@/components/ui";
+import { Card, PageLoader, EmptyState, PointsChip } from "@/components/ui";
 import { Crown } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { isoDayToDate } from "@/types";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
-
-// "yyyy-MM-dd" a Date local a mediodía (evita el corrimiento de día por UTC).
-const dayDate = (iso: string) => new Date(`${iso}T12:00:00`);
 
 export default function JornadaPage() {
   const { data, isLoading } = useMatchdays();
   const { t } = useTranslation();
 
   if (isLoading) {
-    return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
+    return <PageLoader />;
   }
 
   // El backend las envía cronológicas ascendentes; se muestran de la más reciente.
@@ -32,13 +30,13 @@ export default function JornadaPage() {
       ) : (
         days.map((day) => (
           <Card key={day.date}>
-            {/* Cabecera: fecha + MVP del día */}
-            <div className="flex items-center justify-between gap-2 mb-4">
+            {/* Cabecera: fecha + MVP del día. Apila en móvil. */}
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
               <h2 className="font-display text-lg sm:text-xl capitalize">
-                {format(dayDate(day.date), "EEEE d 'de' MMMM", { locale: es })}
+                {format(isoDayToDate(day.date), "EEEE d 'de' MMMM", { locale: es })}
               </h2>
               {day.mvps.length > 0 && (
-                <span className="inline-flex items-center gap-1.5 text-ucl-gold text-xs font-semibold border border-ucl-gold/40 bg-ucl-gold/10 rounded-full px-2.5 py-1 shrink-0">
+                <span className="inline-flex items-center gap-1.5 text-ucl-gold text-xs font-semibold border border-ucl-gold/40 bg-ucl-gold/10 rounded-full px-2.5 py-1 shrink-0 max-w-full">
                   <Crown size={13} className="shrink-0" /> {t("jornada.mvpLabel")}: {day.mvps.join(" · ")}
                 </span>
               )}
@@ -57,7 +55,7 @@ export default function JornadaPage() {
                     )}
                   >
                     <span className={clsx(
-                      "text-sm font-medium truncate flex items-center gap-1.5",
+                      "flex-1 min-w-0 text-sm font-medium truncate flex items-center gap-1.5",
                       isMvp ? "text-ucl-gold" : "text-ucl-white"
                     )}>
                       {isMvp && <Crown size={13} className="shrink-0" />}

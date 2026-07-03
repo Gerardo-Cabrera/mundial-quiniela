@@ -1,25 +1,25 @@
 import { useMatchdays } from "@/hooks";
-import { Card, Spinner, EmptyState } from "@/components/ui";
+import { Card, PageLoader, EmptyState } from "@/components/ui";
 import { Crown } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { isoDayToDate } from "@/types";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
 
 const RANK_MEDAL = ["🥇", "🥈", "🥉"];
-
-// "yyyy-MM-dd" a Date local a mediodía (evita el corrimiento de día por UTC).
-const dayDate = (iso: string) => new Date(`${iso}T12:00:00`);
 
 export default function MvpsPage() {
   const { data, isLoading } = useMatchdays();
   const { t } = useTranslation();
 
   if (isLoading) {
-    return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
+    return <PageLoader />;
   }
 
-  const mvpDays = (data?.days ?? []).filter((d) => d.mvps.length > 0); // cronológico
+  // El backend envía los días en orden ascendente; se muestran de la jornada más
+  // reciente a la más antigua.
+  const mvpDays = [...(data?.days ?? [])].reverse().filter((d) => d.mvps.length > 0);
   const ranking = data?.mvp_ranking ?? [];
 
   return (
@@ -42,7 +42,7 @@ export default function MvpsPage() {
               {mvpDays.map((d) => (
                 <div key={d.date} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-ucl-blue/20">
                   <span className="text-xs text-ucl-silver/60 font-mono capitalize shrink-0 w-20">
-                    {format(dayDate(d.date), "d MMM", { locale: es })}
+                    {format(isoDayToDate(d.date), "d MMM", { locale: es })}
                   </span>
                   <span className="flex-1 min-w-0 text-sm font-medium text-ucl-gold truncate flex items-center gap-1.5">
                     <Crown size={13} className="shrink-0" /> {d.mvps.join(" · ")}
