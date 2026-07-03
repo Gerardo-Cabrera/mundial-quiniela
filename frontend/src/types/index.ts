@@ -114,7 +114,8 @@ export function isFirstGoalHit(
   );
 }
 
-// Un partido "jugado" = en vivo o finalizado: ya empezó y tiene marcador/primer gol.
+// Un partido "jugado" = en vivo o finalizado (ya empezó). Solo mira el estado; el
+// marcador y el primer gol son nullables y se comprueban por separado donde se usan.
 // Concepto único usado por las tarjetas y la vista de Resultados.
 export const isMatchPlayed = (match: Pick<Match, "status">): boolean =>
   match.status === "live" || match.status === "finished";
