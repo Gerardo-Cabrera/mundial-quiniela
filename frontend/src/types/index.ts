@@ -31,6 +31,8 @@ export interface Match {
   away_team_logo: string | null;
   home_score: number | null;
   away_score: number | null;
+  penalty_home: number | null;
+  penalty_away: number | null;
   elapsed: number | null;
   first_goal_team: string | null;
   first_goal_player_id: number | null;

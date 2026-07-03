@@ -117,6 +117,7 @@
   },
   "matchCard": {
     "vs": "VS",
+    "penalties": "pen. {{home}}-{{away}}",
     "firstGoalLabel": "Primer gol:",
     "yourPrediction": "Tu pronóstico:",
     "exact": "✓ Exacto",
