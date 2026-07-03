@@ -258,39 +258,52 @@ async def test_leaderboard_ties_share_rank(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_user_predictions_reveal_by_started_day(auth_client: AsyncClient):
+async def test_user_predictions_reveal_by_started_day(auth_client: AsyncClient, monkeypatch):
     """Ver los pronósticos de otro participante se revela por JORNADA (día): una vez
-    que su primer partido comenzó, se ven TODOS los pronósticos de ese día (aunque
-    alguno siga SCHEDULED); las jornadas no iniciadas no se muestran."""
+    que su primer partido comenzó, se ven TODOS los del día —incluido uno que aún NO
+    empieza—; las jornadas no iniciadas se ocultan. Se congela 'ahora' para que el
+    resultado no dependa del reloj real."""
+    from app.crud import matches as matches_module
     from app.models.prediction import Prediction
 
-    # Jornada ya iniciada (17/06): un partido finalizado y otro del mismo día aún
-    # SCHEDULED. Fechas fijas pasadas → determinista (no depende de la hora actual).
-    started_finished = await _create_match(
+    # 'Ahora' fijo (17/06 18:00 UTC = 12:00 en TOURNAMENT_TZ). Solo se parchea el
+    # módulo que consulta la hora en la ruta (get_started_day_match_ids).
+    frozen_now = datetime(2026, 6, 17, 18, tzinfo=timezone.utc)
+
+    class _FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return frozen_now if tz else frozen_now.replace(tzinfo=None)
+
+    monkeypatch.setattr(matches_module, "datetime", _FrozenDatetime)
+
+    # Jornada de hoy (17/06): el primer partido ya jugó y otro del MISMO día aún no
+    # empieza (kickoff futuro respecto a 'ahora') → ambos se revelan.
+    started = await _create_match(
         api_fixture_id=2001, status=MatchStatus.FINISHED,
-        match_date=datetime(2026, 6, 17, 12, tzinfo=timezone.utc),
+        match_date=datetime(2026, 6, 17, 16, tzinfo=timezone.utc),
     )
-    started_scheduled = await _create_match(
+    not_yet = await _create_match(
         api_fixture_id=2002, status=MatchStatus.SCHEDULED,
-        match_date=datetime(2026, 6, 17, 20, tzinfo=timezone.utc),
+        match_date=datetime(2026, 6, 17, 22, tzinfo=timezone.utc),
     )
-    # Jornada futura (no iniciada): oculta.
-    future_scheduled = await _create_match(
+    # Jornada del día siguiente (no iniciada): oculta.
+    future = await _create_match(
         api_fixture_id=2003, status=MatchStatus.SCHEDULED,
-        match_date=datetime.now(timezone.utc) + timedelta(days=1),
+        match_date=datetime(2026, 6, 18, 22, tzinfo=timezone.utc),
     )
     async with TestSessionLocal() as session:
         session.add_all([
-            Prediction(user_id=1, match_id=started_finished, predicted_home=1, predicted_away=0),
-            Prediction(user_id=1, match_id=started_scheduled, predicted_home=2, predicted_away=2),
-            Prediction(user_id=1, match_id=future_scheduled, predicted_home=3, predicted_away=3),
+            Prediction(user_id=1, match_id=started, predicted_home=1, predicted_away=0),
+            Prediction(user_id=1, match_id=not_yet, predicted_home=2, predicted_away=2),
+            Prediction(user_id=1, match_id=future, predicted_home=3, predicted_away=3),
         ])
         await session.commit()
 
     data = (await auth_client.get("/api/predictions/user/1")).json()
     ids = {p["match_id"] for p in data}
-    assert ids == {started_finished, started_scheduled}  # el día iniciado, completo
-    assert future_scheduled not in ids                    # jornada no iniciada, oculta
+    assert ids == {started, not_yet}   # el día iniciado completo, incl. el no empezado
+    assert future not in ids            # jornada no iniciada, oculta
 
 
 @pytest.mark.asyncio
