@@ -7,10 +7,9 @@ import os
 # Debe definirse ANTES de importar la app para que Settings lo lea.
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import event, StaticPool
+from sqlalchemy import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.database import Base, get_db
