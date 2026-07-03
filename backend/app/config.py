@@ -38,23 +38,17 @@ class Settings(BaseSettings):
     # (Las selecciones no llevan intervalo: se sincronizan una sola vez al
     # arrancar porque no cambian durante el torneo.)
     SYNC_PLAYERS_HOURS: int = 72  # plantillas: cada ~3 días (cambian por lesiones, altas)
-    # Sync de fixtures ADAPTATIVO: consulta seguido (cada SYNC_FIXTURES_MINUTES) SOLO
-    # mientras haya un partido EN JUEGO (kickoff pasado y aún sin FINISHED) → marcador,
-    # primer gol y FT casi en tiempo real; el resto del tiempo, de respaldo cada
-    # SYNC_FIXTURES_IDLE_MINUTES (para captar kickoffs y fixtures nuevos). El primer gol se
-    # resuelve por partido UNA sola vez (al obtenerlo deja de consultarse), así el coste se
-    # mantiene holgado.
+    # Sync de fixtures ADAPTATIVO (ver sync_fixtures): rápido mientras hay un partido
+    # EN JUEGO y espaciado el resto, para no malgastar cuota de API.
     SYNC_FIXTURES_MINUTES: int = 1        # cadencia mientras hay un partido en juego (near-real-time)
     SYNC_FIXTURES_IDLE_MINUTES: int = 30  # cadencia de respaldo cuando no hay partidos en juego
     SYNC_GOALS_HOURS: int = 1
     CALC_POINTS_MINUTES: int = 30
     JOB_MAX_RETRIES: int = 3
     JOB_RETRY_DELAY_SECONDS: int = 10
-    # Tolerancia de "misfire": si una corrida programada se retrasa (suspensión del
-    # equipo en desarrollo, reload, pausa larga del loop), se ejecuta igual dentro de
-    # este plazo en vez de descartarse. Con coalesce, las corridas acumuladas se
-    # colapsan en una sola (los jobs son idempotentes, así que la corrida tardía es
-    # segura). Evita que los datos queden congelados tras una pausa del proceso.
+    # Plazo para ejecutar una corrida retrasada (suspensión, reload, pausa del loop)
+    # en vez de descartarla, evitando que los datos queden congelados. Mecanismo
+    # (coalesce + misfire) detallado en scheduler.py.
     JOB_MISFIRE_GRACE_SECONDS: int = 3600
     # Fallback de finalización: si un partido de FASE DE GRUPOS sigue marcado LIVE
     # pasados estos MINUTOS desde el kickoff, se considera finalizado. 135 min cubre
