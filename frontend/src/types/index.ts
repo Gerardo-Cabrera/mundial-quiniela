@@ -113,6 +113,12 @@ export function isFirstGoalHit(
   );
 }
 
+/**
+ * Convierte una fecha "yyyy-MM-dd" a un Date local al mediodía. El mediodía evita
+ * el corrimiento de día que produciría parsear la fecha "pelada" como UTC.
+ */
+export const isoDayToDate = (iso: string) => new Date(`${iso}T12:00:00`);
+
 // Cierre de pronósticos: 1 h antes del primer partido del día (la jornada).
 const PREDICTION_LEAD_MS = 60 * 60 * 1000;
 

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useMatches, useMyPredictions } from "@/hooks";
 import { MatchDayGrid } from "@/components/MatchDayGrid";
-import { Spinner, EmptyState } from "@/components/ui";
+import { PageLoader, EmptyState } from "@/components/ui";
 import { groupMatchesByDay } from "@/types";
 import { useTranslation } from "react-i18next";
 
@@ -27,7 +27,7 @@ export default function ResultsPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <PageLoader />
       ) : !days.length ? (
         <EmptyState icon="📊" title={t("results.emptyTitle")} description={t("results.emptyDescription")} />
       ) : (
