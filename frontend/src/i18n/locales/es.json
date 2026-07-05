@@ -69,8 +69,8 @@
     "firstGoalByMatch": "Primer gol por partido",
     "topScore": "Marcador más repetido",
     "exactRanking": "Ranking de marcador exacto",
+    "exactByMatch": "Marcador exacto por partido",
     "timesRepeated": "{{n}} veces",
-    "noOneHit": "nadie acertó",
     "noHits": "Aún no hay aciertos.",
     "emptyTitle": "Sin aciertos todavía",
     "emptyDescription": "Los aciertos aparecerán cuando haya partidos finalizados y puntuados."
