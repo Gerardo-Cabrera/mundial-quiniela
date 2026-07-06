@@ -107,16 +107,25 @@ export interface FirstGoalMatch {
   away_team: string;
   match_date: string;
   scorer: string | null;   // goleador real del primer gol
-  hitters: string[];       // equipos que lo acertaron
+  hitters: string[];       // equipos que lo acertaron (siempre ≥1)
+}
+export interface ExactMatch {
+  match_id: number;
+  home_team: string;
+  away_team: string;
+  match_date: string;
+  score: string;           // marcador real, "2-1"
+  hitters: string[];       // equipos que acertaron el marcador exacto (siempre ≥1)
 }
 export interface ScoreCount {
   score: string;           // "2-1"
   count: number;
 }
 export interface StatsSummary {
-  first_goal_matches: FirstGoalMatch[];  // resueltos, más reciente primero
+  first_goal_matches: FirstGoalMatch[];  // solo partidos con acierto, más reciente primero
   first_goal_ranking: UserCount[];        // aciertos de primer gol por usuario (desc)
   top_scores: ScoreCount[];               // marcador(es) real(es) más repetido(s)
+  exact_matches: ExactMatch[];            // solo partidos con acierto de marcador exacto
   exact_ranking: UserCount[];             // aciertos de marcador exacto por usuario (desc)
 }
 

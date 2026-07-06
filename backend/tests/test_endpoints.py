@@ -392,9 +392,13 @@ async def test_stats_first_goal_and_exact(auth_client: AsyncClient):
     ]
     # Marcador real más repetido: 2-1 (m1 y m2).
     assert data["top_scores"] == [{"score": "2-1", "count": 2}]
-    # Quién acertó el primer gol de cada partido.
+    # Primer gol por partido: solo los partidos con acierto (los 3 lo tienen aquí).
     hitters = {fg["match_id"]: fg["hitters"] for fg in data["first_goal_matches"]}
     assert hitters == {m1: ["Jax FC"], m2: ["Genkidama F.C"], m3: ["Jax FC"]}
+    # Marcadores exactos acertados: m1 (2-1) por ambos, m2 (2-1) por Jax FC; m3 (1-0)
+    # no lo acertó nadie → no aparece.
+    exact = {e["match_id"]: (e["score"], e["hitters"]) for e in data["exact_matches"]}
+    assert exact == {m1: ("2-1", ["Genkidama F.C", "Jax FC"]), m2: ("2-1", ["Jax FC"])}
 
 
 # ── PREDICTIONS VALIDATION ────────────────────────────────────────────────────

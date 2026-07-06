@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.match import Match, MatchStatus
 from app.models.prediction import Prediction
 from app.models.user import User
-from app.schemas.stats import FirstGoalMatch, ScoreCount, StatsSummary, UserCount
+from app.schemas.stats import ExactMatch, FirstGoalMatch, ScoreCount, StatsSummary, UserCount
 
 
 def _ranking(counts: dict[str, int]) -> list[UserCount]:
@@ -44,13 +44,15 @@ class StatsCRUD:
         by_id = {m.id: m for m in matches}
         exact_counts: dict[str, int] = defaultdict(int)
         fg_counts: dict[str, int] = defaultdict(int)
-        fg_hitters: dict[int, list[str]] = defaultdict(list)  # match_id -> equipos
+        fg_hitters: dict[int, list[str]] = defaultdict(list)      # match_id -> equipos
+        exact_hitters: dict[int, list[str]] = defaultdict(list)   # match_id -> equipos
         for team, match_id, ph, pa, pfg in preds:
             m = by_id.get(match_id)
             if m is None or m.home_score is None or m.away_score is None:
                 continue
             if ph == m.home_score and pa == m.away_score:
                 exact_counts[team] += 1
+                exact_hitters[match_id].append(team)
             # Primer gol por jugador (id), igual que el scoring: ambos deben existir.
             if pfg is not None and m.first_goal_player_id is not None and pfg == m.first_goal_player_id:
                 fg_counts[team] += 1
@@ -67,19 +69,29 @@ class StatsCRUD:
             key=lambda x: x.score,
         )
 
+        # Solo partidos con acierto (≥1 equipo), más reciente primero (matches ya viene desc).
         first_goal_matches = [
             FirstGoalMatch(
                 match_id=m.id, home_team=m.home_team, away_team=m.away_team,
                 match_date=m.match_date, scorer=m.first_goal_player,
-                hitters=sorted(fg_hitters.get(m.id, [])),
+                hitters=sorted(fg_hitters[m.id]),
             )
-            for m in matches if m.first_goal_player_id is not None
+            for m in matches if fg_hitters.get(m.id)
+        ]
+        exact_matches = [
+            ExactMatch(
+                match_id=m.id, home_team=m.home_team, away_team=m.away_team,
+                match_date=m.match_date, score=f"{m.home_score}-{m.away_score}",
+                hitters=sorted(exact_hitters[m.id]),
+            )
+            for m in matches if exact_hitters.get(m.id)
         ]
 
         return StatsSummary(
             first_goal_matches=first_goal_matches,
             first_goal_ranking=_ranking(fg_counts),
             top_scores=top_scores,
+            exact_matches=exact_matches,
             exact_ranking=_ranking(exact_counts),
         )
 
