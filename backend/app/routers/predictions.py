@@ -73,6 +73,24 @@ async def _resolve_backfill_match(
     return match, item.predicted_away, item.predicted_home
 
 
+async def _resolve_first_goal(
+    db: AsyncSession, match: Match, player_id: int | None, player_name: str | None
+) -> tuple[int | None, str | None]:
+    """Primer goleador del backfill: por `player_id` (validado) o por **nombre**,
+    buscándolo en las plantillas del partido (reusa `player_crud.get_for_teams`, la misma
+    búsqueda del selector). Nombre sin coincidencia o ambiguo → 400."""
+    if player_id is not None:
+        return await _validate_first_goal_player(db, match, player_id)
+    if not player_name:
+        return None, None
+    players = await player_crud.get_for_teams(db, [match.home_team, match.away_team], name_query=player_name)
+    if not players:
+        raise HTTPException(status_code=400, detail=f"No hay jugador '{player_name}' en {match.home_team} ni {match.away_team}.")
+    if len(players) > 1:
+        raise HTTPException(status_code=400, detail=f"'{player_name}' es ambiguo ({len(players)} jugadores); precisa el nombre o usa first_goal_player_id.")
+    return players[0].api_player_id, players[0].name
+
+
 @router.get("/", response_model=list[PredictionOut])
 async def get_my_predictions(
     db: AsyncSession = Depends(get_db),
@@ -167,8 +185,8 @@ async def backfill_predictions(
         match, home, away = await _resolve_backfill_match(db, item)
         if match.status == MatchStatus.FINISHED:
             any_finished = True
-        fg_player_id, fg_player_name = await _validate_first_goal_player(
-            db, match, item.first_goal_player_id
+        fg_player_id, fg_player_name = await _resolve_first_goal(
+            db, match, item.first_goal_player_id, item.first_goal_player
         )
 
         prediction = await prediction_crud.upsert(

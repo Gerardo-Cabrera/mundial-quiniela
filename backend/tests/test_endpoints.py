@@ -757,6 +757,36 @@ async def test_backfill_by_team_names(admin_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_backfill_scorer_by_name(admin_client: AsyncClient):
+    """El backfill admite el primer goleador por NOMBRE (se resuelve contra las
+    plantillas del partido, reusando `get_for_teams`); sin coincidencia → 400."""
+    await _create_match(
+        home_team="Argentina", away_team="Brazil", status=MatchStatus.FINISHED,
+        match_date=datetime.now(timezone.utc) - timedelta(days=2),
+    )
+    resp = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{
+            "home_team": "Argentina", "away_team": "Brazil",
+            "predicted_home": 2, "predicted_away": 1, "first_goal_player": "Messi",
+        }],
+    })
+    assert resp.status_code == 201
+    pred = resp.json()[0]
+    assert pred["first_goal_player"] == "L. Messi" and pred["first_goal_player_id"] == 10
+
+    # Nombre sin coincidencia en las plantillas → 400.
+    bad = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{
+            "home_team": "Argentina", "away_team": "Brazil",
+            "predicted_home": 1, "predicted_away": 0, "first_goal_player": "Cristiano",
+        }],
+    })
+    assert bad.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_backfill_unknown_team(admin_client: AsyncClient):
     resp = await admin_client.post("/api/predictions/admin/backfill", json={
         "team_name": "Equipo Fantasma",
