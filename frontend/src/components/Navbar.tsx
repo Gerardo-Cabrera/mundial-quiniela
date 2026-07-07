@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Trophy, CalendarDays, Goal, ListChecks, CalendarRange, Crown, Target, LogOut, KeyRound, User } from "lucide-react";
+import { Trophy, CalendarDays, Goal, ListChecks, CalendarRange, Crown, Target, Upload, LogOut, KeyRound, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { clsx } from "clsx";
@@ -14,10 +14,14 @@ const NAV_ITEMS = [
   { to: "/predictions", labelKey: "nav.predictions", icon: ListChecks },
 ];
 
+// El backfill es una herramienta solo de admin: se añade al final del menú si aplica.
+const ADMIN_ITEM = { to: "/backfill", labelKey: "nav.backfill", icon: Upload };
+
 export function Navbar() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const items = user?.is_admin ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS;
 
   const handleLogout = () => {
     logout();
@@ -36,7 +40,7 @@ export function Navbar() {
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
+          {items.map(({ to, labelKey, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -99,7 +103,7 @@ export function Navbar() {
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-ucl-navy/95 backdrop-blur border-t border-ucl-blue/40 flex">
-        {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
+        {items.map(({ to, labelKey, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}

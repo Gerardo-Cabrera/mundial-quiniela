@@ -81,6 +81,20 @@ export interface AppSettings {
   late_predictions_enabled: boolean;
 }
 
+// ── BACKFILL (admin) ──────────────────────────────────────────────────────────
+// La vista de admin identifica partido y goleador por NOMBRE (el backend resuelve).
+export interface BackfillItem {
+  home_team: string;
+  away_team: string;
+  predicted_home: number;
+  predicted_away: number;
+  first_goal_player?: string;
+}
+export interface BackfillPayload {
+  team_name: string;
+  predictions: BackfillItem[];
+}
+
 // ── JORNADA / MVPs ──────────────────────────────────────────────────────────
 export interface MatchdayUserPoints {
   user_id: number;

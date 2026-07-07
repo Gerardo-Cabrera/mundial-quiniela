@@ -1,7 +1,7 @@
 import apiClient from "@/api/client";
 import type {
   Match, Player, Prediction, LeaderboardEntry, MatchdaysSummary, StatsSummary,
-  AppSettings, MatchPhase, MatchStatus,
+  AppSettings, BackfillPayload, MatchPhase, MatchStatus,
 } from "@/types";
 
 // ── MATCHES ───────────────────────────────────────────────────────────────────
@@ -45,6 +45,11 @@ export const predictionsApi = {
   },
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/api/predictions/${id}`);
+  },
+  // Admin: carga pronósticos de un participante (partido y goleador por nombre).
+  backfill: async (payload: BackfillPayload): Promise<Prediction[]> => {
+    const { data } = await apiClient.post("/api/predictions/admin/backfill", payload);
+    return data;
   },
 };
 
