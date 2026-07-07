@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { useMatches, useMyPredictions } from "@/hooks";
+import { ToggleLeft, ToggleRight } from "lucide-react";
+import { useMatches, useMyPredictions, useSettings, useSetLatePredictions } from "@/hooks";
+import { useAuthStore } from "@/store/authStore";
 import { MatchDayGrid } from "@/components/MatchDayGrid";
 import { PredictionModal } from "@/components/PredictionModal";
 import { PageLoader, EmptyState } from "@/components/ui";
@@ -18,6 +20,7 @@ export default function MatchesPage() {
   const [phase, setPhase]   = useState<MatchPhase | "all">("all");
   const [selected, setSelected] = useState<Match | null>(null);
   const { t } = useTranslation();
+  const { user } = useAuthStore();
 
   // Se piden TODOS los partidos del filtro (no solo "scheduled") para que
   // groupMatchesByDay calcule `open`/`firstKickoff` con el PRIMER partido real del
@@ -28,15 +31,21 @@ export default function MatchesPage() {
 
   const { data: predictions } = useMyPredictions();
 
+  // Interruptor de pronósticos tardíos: extiende la edición hasta el inicio del
+  // primer partido del día. El admin lo controla; afecta a todos los usuarios.
+  const { data: appSettings } = useSettings();
+  const lateEnabled = appSettings?.late_predictions_enabled ?? false;
+  const { mutate: setLate, isPending } = useSetLatePredictions();
+
   // Muestra los partidos aún por jugar (scheduled) agrupados por día, incluidas las
   // jornadas ya cerradas/iniciadas: siguen visibles pero NO editables (MatchDayGrid
   // solo pasa `onPredict` a las abiertas). Los ya jugados viven en "Resultados".
   const days = useMemo(
     () =>
-      groupMatchesByDay(matches ?? [])
+      groupMatchesByDay(matches ?? [], lateEnabled)
         .map((d) => ({ ...d, matches: d.matches.filter((m) => m.status === "scheduled") }))
         .filter((d) => d.matches.length > 0),
-    [matches]
+    [matches, lateEnabled]
   );
 
   return (
@@ -45,6 +54,25 @@ export default function MatchesPage() {
         <h1 className="font-display text-3xl sm:text-4xl text-ucl-gold">{t("matches.title")}</h1>
         <p className="text-ucl-silver/60 text-sm mt-1">{t("matches.subtitle")}</p>
       </div>
+
+      {/* Interruptor admin: pronósticos tardíos (hasta el inicio del primer partido) */}
+      {user?.is_admin && (
+        <button
+          type="button"
+          onClick={() => setLate(!lateEnabled)}
+          disabled={isPending}
+          title={t("matches.latePredictionsHint")}
+          className={clsx(
+            "inline-flex items-center gap-2 text-xs rounded-full border px-3 py-1.5 transition-colors disabled:opacity-50",
+            lateEnabled
+              ? "border-ucl-gold/50 text-ucl-gold bg-ucl-gold/10"
+              : "border-ucl-blue/50 text-ucl-silver hover:text-ucl-gold hover:border-ucl-gold"
+          )}
+        >
+          {lateEnabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+          {t("matches.latePredictions")}
+        </button>
+      )}
 
       {/* Filtro por fase */}
       <div className="flex gap-2 flex-wrap">

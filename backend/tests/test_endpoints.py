@@ -513,6 +513,36 @@ async def test_prediction_closes_for_whole_day_after_first_kickoff(auth_client: 
 
 
 @pytest.mark.asyncio
+async def test_late_predictions_switch(admin_client: AsyncClient):
+    """El interruptor de pronósticos tardíos reabre la ventana entre el cierre normal
+    (1 h antes) y el inicio del primer partido; nunca tras el inicio."""
+    # Único partido de HOY, kickoff a 30 min → su jornada ya cerró (dentro de la hora previa).
+    grace_id = await _create_match(
+        api_fixture_id=2500,
+        match_date=datetime.now(timezone.utc) + timedelta(minutes=30),
+    )
+    body = {"match_id": grace_id, "predicted_home": 1, "predicted_away": 0}
+
+    # Interruptor OFF (por defecto): cerrado.
+    assert (await admin_client.post("/api/predictions/", json=body)).status_code == 400
+
+    # Interruptor ON.
+    r = await admin_client.post("/api/config/settings", json={"late_predictions_enabled": True})
+    assert r.status_code == 200 and r.json()["late_predictions_enabled"] is True
+
+    # Ahora se admite (el primer partido aún no empieza).
+    assert (await admin_client.post("/api/predictions/", json=body)).status_code == 201
+
+    # Un partido cuya jornada ya inició sigue cerrado, incluso con el interruptor ON.
+    started_id = await _create_match(
+        api_fixture_id=2501,
+        match_date=datetime(2026, 6, 17, 12, tzinfo=timezone.utc),  # otro día, ya pasado
+    )
+    started_body = {"match_id": started_id, "predicted_home": 0, "predicted_away": 0}
+    assert (await admin_client.post("/api/predictions/", json=started_body)).status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_prediction_rejects_finished_match(auth_client: AsyncClient):
     match_id = await _create_match(
         status=MatchStatus.FINISHED,
@@ -686,6 +716,74 @@ async def test_backfill_finished_match_triggers_scoring(admin_client: AsyncClien
     # Exacto (8) + victoria (5) + primer goleador (3) en fase de grupos = 16.
     assert pred["points_earned"] == 16
     assert pred["match"]["first_goal_player"] == "L. Messi"
+
+
+@pytest.mark.asyncio
+async def test_backfill_by_team_names(admin_client: AsyncClient):
+    """El backfill identifica el partido por el PAR de equipos (sin match_id) y orienta
+    el marcador al home/away del fixture aunque el par venga invertido."""
+    match_id = await _create_match(
+        home_team="Argentina", away_team="Brazil", status=MatchStatus.FINISHED,
+        match_date=datetime.now(timezone.utc) - timedelta(days=2),
+    )
+    # En el orden del fixture.
+    resp = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{"home_team": "Argentina", "away_team": "Brazil", "predicted_home": 2, "predicted_away": 1}],
+    })
+    assert resp.status_code == 201
+    assert resp.json()[0]["match_id"] == match_id
+    assert (resp.json()[0]["predicted_home"], resp.json()[0]["predicted_away"]) == (2, 1)
+
+    # Par INVERTIDO (Brazil 1 - Argentina 2): se orienta al fixture → 2 - 1.
+    resp2 = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{"home_team": "Brazil", "away_team": "Argentina", "predicted_home": 1, "predicted_away": 2}],
+    })
+    assert resp2.status_code == 201
+    assert (resp2.json()[0]["predicted_home"], resp2.json()[0]["predicted_away"]) == (2, 1)
+
+    # Equipos sin partido → 404; sin match_id ni equipos → 422 (validación de schema).
+    bad = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{"home_team": "Narnia", "away_team": "Wakanda", "predicted_home": 0, "predicted_away": 0}],
+    })
+    assert bad.status_code == 404
+    invalid = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{"predicted_home": 1, "predicted_away": 0}],
+    })
+    assert invalid.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_backfill_scorer_by_name(admin_client: AsyncClient):
+    """El backfill admite el primer goleador por NOMBRE (se resuelve contra las
+    plantillas del partido, reusando `get_for_teams`); sin coincidencia → 400."""
+    await _create_match(
+        home_team="Argentina", away_team="Brazil", status=MatchStatus.FINISHED,
+        match_date=datetime.now(timezone.utc) - timedelta(days=2),
+    )
+    resp = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{
+            "home_team": "Argentina", "away_team": "Brazil",
+            "predicted_home": 2, "predicted_away": 1, "first_goal_player": "Messi",
+        }],
+    })
+    assert resp.status_code == 201
+    pred = resp.json()[0]
+    assert pred["first_goal_player"] == "L. Messi" and pred["first_goal_player_id"] == 10
+
+    # Nombre sin coincidencia en las plantillas → 400.
+    bad = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{
+            "home_team": "Argentina", "away_team": "Brazil",
+            "predicted_home": 1, "predicted_away": 0, "first_goal_player": "Cristiano",
+        }],
+    })
+    assert bad.status_code == 400
 
 
 @pytest.mark.asyncio

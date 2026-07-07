@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_, and_
 from app.models.match import Match, MatchPhase, MatchStatus
 from app.models.prediction import Prediction
 from app.crud._upsert import upsert_by_key
@@ -27,6 +27,20 @@ class MatchCRUD:
     async def get_by_id(self, db: AsyncSession, match_id: int) -> Match | None:
         result = await db.execute(select(Match).where(Match.id == match_id))
         return result.scalar_one_or_none()
+
+    async def get_by_teams(self, db: AsyncSession, home_team: str, away_team: str) -> list[Match]:
+        """Partidos entre esos dos equipos en **cualquier orden** (para el backfill por
+        nombres, sin conocer el id). Puede haber más de uno si el par se repite
+        (p. ej. grupos + eliminatoria)."""
+        result = await db.execute(
+            select(Match).where(
+                or_(
+                    and_(Match.home_team == home_team, Match.away_team == away_team),
+                    and_(Match.home_team == away_team, Match.away_team == home_team),
+                )
+            )
+        )
+        return list(result.scalars().all())
 
     async def get_day_first_kickoff(
         self, db: AsyncSession, match_date: datetime, tz: ZoneInfo
