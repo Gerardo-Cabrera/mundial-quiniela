@@ -719,6 +719,44 @@ async def test_backfill_finished_match_triggers_scoring(admin_client: AsyncClien
 
 
 @pytest.mark.asyncio
+async def test_backfill_by_team_names(admin_client: AsyncClient):
+    """El backfill identifica el partido por el PAR de equipos (sin match_id) y orienta
+    el marcador al home/away del fixture aunque el par venga invertido."""
+    match_id = await _create_match(
+        home_team="Argentina", away_team="Brazil", status=MatchStatus.FINISHED,
+        match_date=datetime.now(timezone.utc) - timedelta(days=2),
+    )
+    # En el orden del fixture.
+    resp = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{"home_team": "Argentina", "away_team": "Brazil", "predicted_home": 2, "predicted_away": 1}],
+    })
+    assert resp.status_code == 201
+    assert resp.json()[0]["match_id"] == match_id
+    assert (resp.json()[0]["predicted_home"], resp.json()[0]["predicted_away"]) == (2, 1)
+
+    # Par INVERTIDO (Brazil 1 - Argentina 2): se orienta al fixture → 2 - 1.
+    resp2 = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{"home_team": "Brazil", "away_team": "Argentina", "predicted_home": 1, "predicted_away": 2}],
+    })
+    assert resp2.status_code == 201
+    assert (resp2.json()[0]["predicted_home"], resp2.json()[0]["predicted_away"]) == (2, 1)
+
+    # Equipos sin partido → 404; sin match_id ni equipos → 422 (validación de schema).
+    bad = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{"home_team": "Narnia", "away_team": "Wakanda", "predicted_home": 0, "predicted_away": 0}],
+    })
+    assert bad.status_code == 404
+    invalid = await admin_client.post("/api/predictions/admin/backfill", json={
+        "team_name": "Jax FC",
+        "predictions": [{"predicted_home": 1, "predicted_away": 0}],
+    })
+    assert invalid.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_backfill_unknown_team(admin_client: AsyncClient):
     resp = await admin_client.post("/api/predictions/admin/backfill", json={
         "team_name": "Equipo Fantasma",

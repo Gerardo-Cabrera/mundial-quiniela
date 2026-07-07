@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.match import Match, MatchStatus
 from app.models.prediction import Prediction
 from app.models.user import User
-from app.schemas import PredictionCreate, PredictionOut, PredictionBackfillRequest
+from app.schemas import PredictionCreate, PredictionOut, PredictionBackfillRequest, PredictionBackfillItem
 from app.core.deps import get_current_user, get_admin_user
 from app.crud import prediction_crud, match_crud, user_crud, player_crud, setting_crud
 from app.services.scheduler import sync_first_goals, calculate_pending_points
@@ -48,6 +48,29 @@ async def _validate_first_goal_player(
             detail=f"El jugador {player_id} no pertenece a {match.home_team} ni {match.away_team}.",
         )
     return player.api_player_id, player.name
+
+
+async def _resolve_backfill_match(
+    db: AsyncSession, item: PredictionBackfillItem
+) -> tuple[Match, int, int]:
+    """Resuelve el partido de un item de backfill por `match_id` o por el PAR de
+    equipos, y devuelve `(match, home, away)` con el marcador orientado al home/away
+    del fixture (por si el par viene invertido)."""
+    if item.match_id is not None:
+        match = await match_crud.get_by_id(db, item.match_id)
+        if not match:
+            raise HTTPException(status_code=404, detail=f"Partido {item.match_id} no encontrado.")
+        return match, item.predicted_home, item.predicted_away
+
+    matches = await match_crud.get_by_teams(db, item.home_team, item.away_team)
+    if not matches:
+        raise HTTPException(status_code=404, detail=f"No hay partido entre '{item.home_team}' y '{item.away_team}'.")
+    if len(matches) > 1:
+        raise HTTPException(status_code=400, detail=f"Varios partidos entre '{item.home_team}' y '{item.away_team}'; usa match_id.")
+    match = matches[0]
+    if item.home_team == match.home_team:
+        return match, item.predicted_home, item.predicted_away
+    return match, item.predicted_away, item.predicted_home
 
 
 @router.get("/", response_model=list[PredictionOut])
@@ -124,10 +147,11 @@ async def backfill_predictions(
 ):
     """
     Carga los pronósticos de un participante para partidos que ya comenzaron o
-    finalizaron (el torneo arrancó el 11/06 y los pronósticos se hicieron antes
-    del kickoff). A diferencia del endpoint normal, NO aplica la validación de
-    fecha: por eso es exclusivo de admin. Crea o actualiza por (usuario, partido);
-    idempotente.
+    finalizaron. A diferencia del endpoint normal, NO aplica la validación de fecha:
+    por eso es exclusivo de admin. Crea o actualiza por (usuario, partido); idempotente.
+
+    Cada item identifica el partido por `match_id` **o** por el par de equipos
+    (`home_team`/`away_team`), para no depender de conocer el id.
 
     Si alguno de los partidos **ya finalizó**, dispara el mismo pipeline del
     scheduler (resolver el **primer gol** real + **calcular puntos**) para puntuar
@@ -140,9 +164,7 @@ async def backfill_predictions(
     saved: list[Prediction] = []
     any_finished = False
     for item in data.predictions:
-        match = await match_crud.get_by_id(db, item.match_id)
-        if not match:
-            raise HTTPException(status_code=404, detail=f"Partido {item.match_id} no encontrado.")
+        match, home, away = await _resolve_backfill_match(db, item)
         if match.status == MatchStatus.FINISHED:
             any_finished = True
         fg_player_id, fg_player_name = await _validate_first_goal_player(
@@ -152,9 +174,9 @@ async def backfill_predictions(
         prediction = await prediction_crud.upsert(
             db,
             user_id=user.id,
-            match_id=item.match_id,
-            predicted_home=item.predicted_home,
-            predicted_away=item.predicted_away,
+            match_id=match.id,
+            predicted_home=home,
+            predicted_away=away,
             first_goal_player_id=fg_player_id,
             first_goal_player=fg_player_name,
         )
