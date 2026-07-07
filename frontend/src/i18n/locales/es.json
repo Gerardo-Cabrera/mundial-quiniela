@@ -43,8 +43,24 @@
     "mvps": "MVPs",
     "stats": "Aciertos",
     "predictions": "Pronósticos",
+    "backfill": "Backfill",
     "changePassword": "Cambiar contraseña",
     "logout": "Salir"
+  },
+  "backfill": {
+    "title": "Backfill",
+    "subtitle": "Cargar pronósticos retroactivos · solo admin",
+    "participant": "Participante",
+    "selectParticipant": "Elige un participante",
+    "home": "Local",
+    "away": "Visitante",
+    "scorerPlaceholder": "Primer goleador por nombre (opcional)",
+    "addRow": "Añadir partido",
+    "removeRow": "Quitar partido",
+    "submit": "Cargar",
+    "loading": "Cargando...",
+    "loaded": "{{n}} pronósticos cargados",
+    "error": "No se pudo cargar. Revisa los datos."
   },
   "jornada": {
     "title": "Jornada",

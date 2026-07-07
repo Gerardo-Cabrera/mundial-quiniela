@@ -95,6 +95,18 @@ export const useDeletePrediction = () => {
   });
 };
 
+// Admin: backfill. La carga puede recalcular puntos de partidos ya finalizados, así
+// que se refrescan las vistas derivadas.
+export const useBackfill = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: predictionsApi.backfill,
+    onSuccess: () =>
+      ["leaderboard", "matchdays", "stats", "predictions"].forEach((k) =>
+        qc.invalidateQueries({ queryKey: [k] })),
+  });
+};
+
 // ── LEADERBOARD ───────────────────────────────────────────────────────────────
 
 export const useLeaderboard = () =>
