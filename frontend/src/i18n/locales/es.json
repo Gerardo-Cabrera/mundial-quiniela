@@ -97,6 +97,8 @@
     "title": "Partidos",
     "subtitle": "Por pronosticar · Mundial FIFA 2026",
     "closed": "Cerrada",
+    "latePredictions": "Pronósticos tardíos",
+    "latePredictionsHint": "Permitir pronosticar hasta el inicio del primer partido del día (no solo hasta 1 h antes).",
     "emptyTitle": "Sin partidos por pronosticar",
     "emptyDescription": "No quedan partidos por jugar para los filtros seleccionados. Mira los resultados en la sección Resultados."
   },

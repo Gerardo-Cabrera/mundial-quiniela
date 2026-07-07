@@ -513,6 +513,36 @@ async def test_prediction_closes_for_whole_day_after_first_kickoff(auth_client: 
 
 
 @pytest.mark.asyncio
+async def test_late_predictions_switch(admin_client: AsyncClient):
+    """El interruptor de pronósticos tardíos reabre la ventana entre el cierre normal
+    (1 h antes) y el inicio del primer partido; nunca tras el inicio."""
+    # Único partido de HOY, kickoff a 30 min → su jornada ya cerró (dentro de la hora previa).
+    grace_id = await _create_match(
+        api_fixture_id=2500,
+        match_date=datetime.now(timezone.utc) + timedelta(minutes=30),
+    )
+    body = {"match_id": grace_id, "predicted_home": 1, "predicted_away": 0}
+
+    # Interruptor OFF (por defecto): cerrado.
+    assert (await admin_client.post("/api/predictions/", json=body)).status_code == 400
+
+    # Interruptor ON.
+    r = await admin_client.post("/api/config/settings", json={"late_predictions_enabled": True})
+    assert r.status_code == 200 and r.json()["late_predictions_enabled"] is True
+
+    # Ahora se admite (el primer partido aún no empieza).
+    assert (await admin_client.post("/api/predictions/", json=body)).status_code == 201
+
+    # Un partido cuya jornada ya inició sigue cerrado, incluso con el interruptor ON.
+    started_id = await _create_match(
+        api_fixture_id=2501,
+        match_date=datetime(2026, 6, 17, 12, tzinfo=timezone.utc),  # otro día, ya pasado
+    )
+    started_body = {"match_id": started_id, "predicted_home": 0, "predicted_away": 0}
+    assert (await admin_client.post("/api/predictions/", json=started_body)).status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_prediction_rejects_finished_match(auth_client: AsyncClient):
     match_id = await _create_match(
         status=MatchStatus.FINISHED,

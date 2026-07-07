@@ -17,6 +17,23 @@ export const useTeamsConfig = () =>
     staleTime: Infinity,
   });
 
+// Ajustes globales (interruptor de pronósticos tardíos). Refresco periódico para que
+// el cambio del admin llegue a los demás usuarios.
+export const useSettings = () =>
+  useQuery({
+    queryKey: ["config", "settings"],
+    queryFn:  configApi.getSettings,
+    refetchInterval: 60_000,
+  });
+
+export const useSetLatePredictions = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: configApi.setLatePredictions,
+    onSuccess: (data) => qc.setQueryData(["config", "settings"], data),
+  });
+};
+
 // ── MATCHES ───────────────────────────────────────────────────────────────────
 
 export const useMatches = (filters?: { phase?: MatchPhase; status?: MatchStatus }) =>

@@ -1,7 +1,7 @@
 import apiClient from "@/api/client";
 import type {
   Match, Player, Prediction, LeaderboardEntry, MatchdaysSummary, StatsSummary,
-  MatchPhase, MatchStatus,
+  AppSettings, MatchPhase, MatchStatus,
 } from "@/types";
 
 // ── MATCHES ───────────────────────────────────────────────────────────────────
@@ -80,6 +80,14 @@ export const statsApi = {
 export const configApi = {
   getTeams: async (): Promise<{ allowed_teams: string[]; wc_teams: string[] }> => {
     const { data } = await apiClient.get("/api/config/teams");
+    return data;
+  },
+  getSettings: async (): Promise<AppSettings> => {
+    const { data } = await apiClient.get("/api/config/settings");
+    return data;
+  },
+  setLatePredictions: async (enabled: boolean): Promise<AppSettings> => {
+    const { data } = await apiClient.post("/api/config/settings", { late_predictions_enabled: enabled });
     return data;
   },
 };

@@ -9,7 +9,7 @@ from app.models.prediction import Prediction
 from app.models.user import User
 from app.schemas import PredictionCreate, PredictionOut, PredictionBackfillRequest
 from app.core.deps import get_current_user, get_admin_user
-from app.crud import prediction_crud, match_crud, user_crud, player_crud
+from app.crud import prediction_crud, match_crud, user_crud, player_crud, setting_crud
 from app.services.scheduler import sync_first_goals, calculate_pending_points
 
 router = APIRouter(prefix="/predictions", tags=["Predictions"])
@@ -18,15 +18,18 @@ _TOURNAMENT_TZ = ZoneInfo(settings.TOURNAMENT_TZ)
 
 
 async def _ensure_match_predictable(db: AsyncSession, match: Match) -> None:
-    """Los pronósticos de una jornada cierran **1 hora antes del primer partido
-    del día** (no por partido individual): así nadie puede esperar a ver el primer
-    partido para pronosticar los siguientes del mismo día. (El backfill admin
-    omite esta validación para cargar jornadas ya jugadas.)"""
+    """Los pronósticos de una jornada cierran **1 hora antes del primer partido del
+    día** (no por partido individual): así nadie espera a ver el primer partido para
+    pronosticar los siguientes del mismo día. Con el interruptor de **pronósticos
+    tardíos** activo, la ventana se extiende hasta el inicio del primer partido (nunca
+    después). (El backfill admin omite esta validación.)"""
     first_kickoff = await match_crud.get_day_first_kickoff(db, match.match_date, _TOURNAMENT_TZ)
-    if datetime.now(timezone.utc) >= first_kickoff - timedelta(hours=1):
+    setting = await setting_crud.get(db)
+    lead = timedelta(0) if setting.late_predictions_enabled else timedelta(hours=1)
+    if datetime.now(timezone.utc) >= first_kickoff - lead:
         raise HTTPException(
             status_code=400,
-            detail="Los pronósticos de esta jornada ya cerraron (1 hora antes del primer partido del día).",
+            detail="Los pronósticos de esta jornada ya cerraron.",
         )
 
 

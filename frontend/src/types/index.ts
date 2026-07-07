@@ -75,6 +75,12 @@ export interface Token {
   user: User;
 }
 
+export interface AppSettings {
+  // Interruptor admin: permite pronosticar hasta el inicio del primer partido del día
+  // (no solo hasta 1 h antes).
+  late_predictions_enabled: boolean;
+}
+
 // ── JORNADA / MVPs ──────────────────────────────────────────────────────────
 export interface MatchdayUserPoints {
   user_id: number;
@@ -172,11 +178,12 @@ export interface MatchDay {
 }
 
 /**
- * Agrupa partidos por día (fecha local) ordenados ascendente y marca si la
- * jornada sigue abierta. Fuente única usada por las vistas de Partidos y
- * Resultados (evita duplicar el agrupado y la regla de cierre).
+ * Agrupa partidos por día (fecha local) ordenados ascendente y marca si la jornada
+ * sigue abierta. Fuente única usada por las vistas de Partidos y Resultados (evita
+ * duplicar el agrupado y la regla de cierre). Con `lateEnabled` (interruptor de
+ * pronósticos tardíos) la edición cierra al INICIO del primer partido, no 1 h antes.
  */
-export function groupMatchesByDay(matches: Match[]): MatchDay[] {
+export function groupMatchesByDay(matches: Match[], lateEnabled = false): MatchDay[] {
   const byDay = new Map<string, Match[]>();
   for (const m of matches) {
     const d = new Date(m.match_date);
@@ -192,7 +199,8 @@ export function groupMatchesByDay(matches: Match[]): MatchDay[] {
         (x, y) => +new Date(x.match_date) - +new Date(y.match_date),
       );
       const firstKickoff = +new Date(sorted[0].match_date);
-      return { day, matches: sorted, firstKickoff, open: Date.now() < firstKickoff - PREDICTION_LEAD_MS };
+      const lead = lateEnabled ? 0 : PREDICTION_LEAD_MS;
+      return { day, matches: sorted, firstKickoff, open: Date.now() < firstKickoff - lead };
     });
 }
 
