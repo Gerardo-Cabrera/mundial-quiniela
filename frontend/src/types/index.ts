@@ -11,6 +11,12 @@ export type MatchPhase =
 
 export type MatchStatus = "scheduled" | "live" | "finished" | "postponed";
 
+// Fases en orden de disputa. Fuente única (Partidos antepone "all"; Backfill la usa tal cual).
+export const MATCH_PHASES: MatchPhase[] = [
+  "group_stage", "round_of_32", "round_of_16",
+  "quarter_finals", "semi_finals", "third_place", "final",
+];
+
 // ── MODELS ────────────────────────────────────────────────────────────────────
 
 export interface User {
@@ -82,10 +88,9 @@ export interface AppSettings {
 }
 
 // ── BACKFILL (admin) ──────────────────────────────────────────────────────────
-// La vista de admin identifica partido y goleador por NOMBRE (el backend resuelve).
+// La vista elige el fixture (match_id) y el goleador por nombre (el backend lo resuelve).
 export interface BackfillItem {
-  home_team: string;
-  away_team: string;
+  match_id: number;
   predicted_home: number;
   predicted_away: number;
   first_goal_player?: string;
