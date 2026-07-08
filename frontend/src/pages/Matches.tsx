@@ -6,15 +6,12 @@ import { MatchDayGrid } from "@/components/MatchDayGrid";
 import { PredictionModal } from "@/components/PredictionModal";
 import { PageLoader, EmptyState } from "@/components/ui";
 import type { Match, MatchPhase } from "@/types";
-import { groupMatchesByDay } from "@/types";
+import { groupMatchesByDay, MATCH_PHASES } from "@/types";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
 
 // Las etiquetas se traducen en render (claves `phaseShort.*` en i18n).
-const PHASE_VALUES: (MatchPhase | "all")[] = [
-  "all", "group_stage", "round_of_32", "round_of_16",
-  "quarter_finals", "semi_finals", "third_place", "final",
-];
+const PHASE_VALUES: (MatchPhase | "all")[] = ["all", ...MATCH_PHASES];
 
 export default function MatchesPage() {
   const [phase, setPhase]   = useState<MatchPhase | "all">("all");
